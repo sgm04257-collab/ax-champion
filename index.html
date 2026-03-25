@@ -557,25 +557,32 @@ function summarizeGroupTasks(gi){
   const ragList=allTasks.filter(t=>t.type==='agent'&&t.name)
     .map(t=>`- ${t.member}(${t.rank}): ${t.name}${t.content?' / 달성내용: '+t.content:''}${t.plan?' / 향후계획: '+t.plan:''} (진행률 ${t.progress}%)`).join('\n');
 
-  const prompt=`당신은 기업 AX(AI전환) 프로젝트 전문 컨설턴트입니다.
-아래는 메타넷 그룹 지원실 "${g.name}" 팀 (대표: ${g.leader}) AX Champion들의 개인 과제 목록입니다.
+  const llmCount=allTasks.filter(t=>t.type==='llm'&&t.name).length;
+  const ragCount=allTasks.filter(t=>t.type==='agent'&&t.name).length;
+  const prompt=`당신은 기업 AX(AI전환) 프로젝트 전문 컨설턴트입니다. 추가 질문 없이 아래 정보만으로 즉시 분석하여 결과를 출력해주세요.
 
-[LLM 활용 과제]
-${llmList||'없음'}
+## 분석 대상
+- 팀명: ${g.name} (대표: ${g.leader})
+- LLM 활용 과제 ${llmCount}건, AI Agent·RAG 과제 ${ragCount}건
 
+## 개인 과제 현황
+${llmCount>0?`[LLM 활용 과제]
+${llmList}`:''}
+${ragCount>0?`
 [AI Agent·RAG 과제]
-${ragList||'없음'}
+${ragList}`:''}
 
-위 개인 과제들을 분석하여 팀 차원의 핵심 과제를 도출해주세요.
-아래 형식으로 작성해주세요:
+## 출력 형식 (아래 형식 그대로, 추가 질문 없이 바로 작성)
 
-**LLM 활용 팀 핵심과제명:** (한 줄, 20자 이내)
-**LLM 활용 추진 방향:** (2~3줄)
+**LLM 활용 팀 핵심과제명:** (15자 이내로 간결하게)
+**추진 방향:** 개인 과제들을 통합한 팀 차원의 추진 방향을 2문장으로 작성
 
-**AI Agent·RAG 팀 핵심과제명:** (한 줄, 20자 이내)
-**AI Agent·RAG 추진 방향:** (2~3줄)
+**AI Agent·RAG 팀 핵심과제명:** (15자 이내로 간결하게)
+**추진 방향:** 개인 과제들을 통합한 팀 차원의 추진 방향을 2문장으로 작성
 
-**종합 코멘트:** (팀 전체 방향 1~2줄)`;
+**종합:** 두 영역을 아우르는 팀 전체 방향을 1문장으로 작성
+
+※ 과제가 없는 영역은 "해당 없음"으로 표기`;
 
   // 클립보드 복사
   navigator.clipboard.writeText(prompt).then(()=>{
