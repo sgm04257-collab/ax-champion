@@ -697,31 +697,7 @@ function renderTask(){
       const gidx=gi;
       const midx=g.members.findIndex(x=>x.name===m.name&&x.dept===m.dept);
       const rc=rankColors[m.rank]||'#888';
-      const tasksHtml=(m.tasks||[]).map((t,ti)=>`
-        <div class="gtask-block">
-          <div class="gtask-hd">
-            <span class="gtask-title">과제 ${ti+1}</span>
-            <select class="f-sel" style="width:130px;font-size:10px;padding:2px 6px" onchange="_G[${gidx}].members[${midx}].tasks[${ti}].type=this.value;updateProg();push()">
-              <option value="llm"${(t.type||'llm')==='llm'?' selected':''}>🔵 LLM 활용</option>
-              <option value="agent"${t.type==='agent'?' selected':''}>🟣 AI Agent·RAG</option>
-            </select>
-            <button class="btn-sm btn-sm-co" onclick="_G[${gidx}].members[${midx}].tasks.splice(${ti},1);renderTask();updateProg();push()">삭제</button>
-          </div>
-          <div class="gtask-fields">
-            <div class="gtask-field" style="grid-column:1/-1"><label>과제명</label><input class="f-inp" type="text" value="${t.name||''}" placeholder="과제명을 입력하세요" oninput="_G[${gidx}].members[${midx}].tasks[${ti}].name=this.value;updateProg();push()"></div>
-            <div class="gtask-field" style="grid-column:1/-1">
-              <label>진행률</label>
-              <div class="pct-row">
-                <input type="range" min="0" max="100" value="${t.progress||0}" oninput="this.nextElementSibling.textContent=this.value+'%';_G[${gidx}].members[${midx}].tasks[${ti}].progress=+this.value;updateProg();push()">
-                <span class="pct-val">${t.progress||0}%</span>
-              </div>
-            </div>
-            <div class="gtask-field"><label>상태</label><select class="f-sel" onchange="_G[${gidx}].members[${midx}].tasks[${ti}].status=this.value;push()"><option${(t.status||'미시작')==='미시작'?' selected':''}>미시작</option><option${t.status==='진행중'?' selected':''}>진행중</option><option${t.status==='완료'?' selected':''}>완료</option><option${t.status==='보류'?' selected':''}>보류</option></select></div>
-            <div class="gtask-field"><label>달성 내용</label><textarea class="f-ta" style="min-height:44px" placeholder="현재까지 달성한 내용" oninput="_G[${gidx}].members[${midx}].tasks[${ti}].content=this.value;push()">${t.content||''}</textarea></div>
-            <div class="gtask-field"><label>향후 계획</label><textarea class="f-ta" style="min-height:44px" placeholder="앞으로의 계획" oninput="_G[${gidx}].members[${midx}].tasks[${ti}].plan=this.value;push()">${t.plan||''}</textarea></div>
-            <div class="gtask-field" style="grid-column:1/-1"><label>비고</label><textarea class="f-ta" style="min-height:36px" placeholder="기타 사항" oninput="_G[${gidx}].members[${midx}].tasks[${ti}].note=this.value;push()">${t.note||''}</textarea></div>
-          </div>
-        </div>`).join('');
+
 
       const memberDiv=document.createElement('div');
       memberDiv.style.cssText='margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd)';
@@ -730,15 +706,20 @@ function renderTask(){
           <span style="font-size:13px;font-weight:600;color:var(--tx)">${m.name}</span>
           <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${rc}22;color:${rc}">${m.rank}</span>
           <span style="font-size:10px;color:var(--tx2)">${cleanDept(m.dept)}</span>
-          <button onclick="_G[${gidx}].members[${midx}].tasks.push({id:newTaskId(),name:'',progress:0,status:'미시작',content:'',plan:'',note:''});renderTask();push()" style="margin-left:auto;font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);cursor:pointer;font-weight:500">+ 과제 추가</button>
+          <button onclick="addMemberTask(${gidx},${midx})" style="margin-left:auto;font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);cursor:pointer;font-weight:500">+ 과제 추가</button>
         </div>
-        ${tasksHtml}
-        ${!(m.tasks&&m.tasks.length)?'<div style="font-size:11px;color:var(--tx3);padding:6px 0">아직 입력된 과제가 없어요. 우측 상단 + 과제 추가를 눌러주세요.</div>':''}`;
+        <div id="member-tasks-${gidx}-${midx}"></div>`;
       body.appendChild(memberDiv);
     });
 
     wrap.appendChild(body);
     el.appendChild(wrap);
+  });
+  // 모든 멤버 과제 렌더링
+  window._G.forEach((g,gi)=>{
+    g.members.forEach((m,mi)=>{
+      rerenderMemberTasks(gi,mi);
+    });
   });
   updateProg();
 }
@@ -922,6 +903,61 @@ function sw(t){
 
 // ── 유틸 ──
 function closeOv(id){document.getElementById(id).classList.remove('on');}
+// ── 과제 부분 업데이트 (깜빡임 없음) ──
+function addMemberTask(gi, mi){
+  window._G[gi].members[mi].tasks.push({id:newTaskId(),name:'',progress:0,status:'미시작',type:'llm',content:'',plan:'',note:''});
+  rerenderMemberTasks(gi, mi);
+  updateProg();
+  push();
+}
+window.addMemberTask=addMemberTask;
+
+function removeMemberTask(gi, mi, ti){
+  if(!confirm('이 과제를 삭제할까요?'))return;
+  window._G[gi].members[mi].tasks.splice(ti,1);
+  rerenderMemberTasks(gi, mi);
+  updateProg();
+  push();
+}
+window.removeMemberTask=removeMemberTask;
+
+function rerenderMemberTasks(gi, mi){
+  const g=window._G[gi];
+  const m=g.members[mi];
+  const containerId=`member-tasks-${gi}-${mi}`;
+  const el=document.getElementById(containerId);
+  if(!el)return;
+
+  const tasksHtml=(m.tasks||[]).map((t,ti)=>`
+    <div class="gtask-block">
+      <div class="gtask-hd">
+        <span class="gtask-title">과제 ${ti+1}</span>
+        <select class="f-sel" style="width:130px;font-size:10px;padding:2px 6px" onchange="_G[${gi}].members[${mi}].tasks[${ti}].type=this.value;updateProg();push()">
+          <option value="llm"${(t.type||'llm')==='llm'?' selected':''}>🔵 LLM 활용</option>
+          <option value="agent"${t.type==='agent'?' selected':''}>🟣 AI Agent·RAG</option>
+        </select>
+        <button class="btn-sm btn-sm-co" onclick="removeMemberTask(${gi},${mi},${ti})">삭제</button>
+      </div>
+      <div class="gtask-fields">
+        <div class="gtask-field" style="grid-column:1/-1"><label>과제명</label><input class="f-inp" type="text" value="${t.name||''}" placeholder="과제명을 입력하세요" oninput="_G[${gi}].members[${mi}].tasks[${ti}].name=this.value;updateProg();push()"></div>
+        <div class="gtask-field" style="grid-column:1/-1">
+          <label>진행률</label>
+          <div class="pct-row">
+            <input type="range" min="0" max="100" value="${t.progress||0}" oninput="this.nextElementSibling.textContent=this.value+'%';_G[${gi}].members[${mi}].tasks[${ti}].progress=+this.value;updateProg();push()">
+            <span class="pct-val">${t.progress||0}%</span>
+          </div>
+        </div>
+        <div class="gtask-field"><label>상태</label><select class="f-sel" onchange="_G[${gi}].members[${mi}].tasks[${ti}].status=this.value;push()"><option${(t.status||'미시작')==='미시작'?' selected':''}>미시작</option><option${t.status==='진행중'?' selected':''}>진행중</option><option${t.status==='완료'?' selected':''}>완료</option><option${t.status==='보류'?' selected':''}>보류</option></select></div>
+        <div class="gtask-field"><label>달성 내용</label><textarea class="f-ta" style="min-height:44px" placeholder="현재까지 달성한 내용" oninput="_G[${gi}].members[${mi}].tasks[${ti}].content=this.value;push()">${t.content||''}</textarea></div>
+        <div class="gtask-field"><label>향후 계획</label><textarea class="f-ta" style="min-height:44px" placeholder="앞으로의 계획" oninput="_G[${gi}].members[${mi}].tasks[${ti}].plan=this.value;push()">${t.plan||''}</textarea></div>
+        <div class="gtask-field" style="grid-column:1/-1"><label>비고</label><textarea class="f-ta" style="min-height:36px" placeholder="기타 사항" oninput="_G[${gi}].members[${mi}].tasks[${ti}].note=this.value;push()">${t.note||''}</textarea></div>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = tasksHtml + (!(m.tasks&&m.tasks.length)?'<div style="font-size:11px;color:var(--tx3);padding:6px 0">아직 입력된 과제가 없어요. 우측 상단 + 과제 추가를 눌러주세요.</div>':'');
+}
+window.rerenderMemberTasks=rerenderMemberTasks;
+
 window.closeOv=closeOv;
 window.sw=sw;
 window.toggleAdmin=toggleAdmin;
