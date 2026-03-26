@@ -232,6 +232,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
     <span id="today-badge" class="badge bg-ax"></span>
     <span id="week-badge" class="badge bg-pu">Week 1</span>
     <span id="sync-badge" style="font-size:11px;padding:4px 11px;border-radius:20px;background:var(--bg2);color:var(--tx2);border:0.5px solid var(--bd)">⏳ 연결 중...</span>
+    <button onclick="downloadExcel()" style="font-size:11px;padding:4px 13px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);cursor:pointer;font-weight:500">📥 엑셀 다운로드</button>
     <button id="admin-btn" onclick="toggleAdmin()" style="font-size:11px;padding:4px 13px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx2);cursor:pointer;font-weight:500">🔒 관리자</button>
   </div>
 </div>
@@ -993,6 +994,82 @@ function initToday(){
 
 // ── 부트 ──
 initToday();renderTask();buildMilestone();renderNotices();renderEdu();renderMeetings();buildOverviewGroups();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+function downloadExcel(){
+  const wb = XLSX.utils.book_new();
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+
+  /* ── 시트1: 과제 현황 ── */
+  const taskRows = [['그룹','대표','이름','직급','소속팀','과제유형','과제명','상태','진행률(%)','달성내용','향후계획','비고']];
+  window._G.forEach(g=>{
+    g.members.forEach(m=>{
+      if(!m.tasks||!m.tasks.length){
+        taskRows.push([g.name,g.leader,m.name,m.rank,m.dept.replace(/_MD|_MX|_MG|_RP/g,''),'','','미시작',0,'','','']);
+      } else {
+        m.tasks.forEach(t=>{
+          taskRows.push([
+            g.name, g.leader, m.name, m.rank,
+            m.dept.replace(/_MD|_MX|_MG|_RP/g,''),
+            t.type==='agent'?'AI Agent·RAG':'LLM 활용',
+            t.name||'',
+            t.status||'미시작',
+            t.progress||0,
+            t.content||'',
+            t.plan||'',
+            t.note||''
+          ]);
+        });
+      }
+    });
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(taskRows);
+  // 컬럼 너비
+  ws1['!cols']=[{wch:14},{wch:12},{wch:8},{wch:6},{wch:16},{wch:12},{wch:24},{wch:8},{wch:8},{wch:24},{wch:24},{wch:16}];
+  // 헤더 스타일
+  XLSX.utils.book_append_sheet(wb, ws1, '과제현황');
+
+  /* ── 시트2: 그룹별 핵심과제 ── */
+  const groupRows = [['그룹','대표','LLM 핵심과제명','LLM 과제 내용','LLM 평균진행률(%)','Agent 핵심과제명','Agent 과제 내용','Agent 평균진행률(%)']];
+  window._G.forEach(g=>{
+    const llmTasks=g.members.flatMap(m=>(m.tasks||[]).filter(t=>t.type==='llm'));
+    const ragTasks=g.members.flatMap(m=>(m.tasks||[]).filter(t=>t.type==='agent'));
+    const llmAvg=llmTasks.length?Math.round(llmTasks.reduce((s,t)=>s+(t.progress||0),0)/llmTasks.length):0;
+    const ragAvg=ragTasks.length?Math.round(ragTasks.reduce((s,t)=>s+(t.progress||0),0)/ragTasks.length):0;
+    groupRows.push([
+      g.name, g.leader,
+      g.keyTask_llm||'', g.tasks.llm||'', llmAvg,
+      g.keyTask_rag||'', g.tasks.rag||'', ragAvg
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(groupRows);
+  ws2['!cols']=[{wch:16},{wch:12},{wch:20},{wch:30},{wch:12},{wch:20},{wch:30},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, '그룹별핵심과제');
+
+  /* ── 시트3: 주간 회의록 ── */
+  const meetRows = [['날짜','제목','주요 내용','결정 사항']];
+  (window._meetings||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(m=>{
+    meetRows.push([m.date, m.title||'주간 회의', m.body||'', m.dec||'']);
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(meetRows);
+  ws3['!cols']=[{wch:12},{wch:20},{wch:50},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws3, '주간회의록');
+
+  /* ── 시트4: 교육 일정 ── */
+  const eduRows = [['No','과정명','일정','대상','교육방식','시간','필수여부']];
+  (window._eduRows||[]).forEach((r,i)=>{
+    eduRows.push([i+1, r.name, r.schedule, r.target, r.method, r.hours, r.req]);
+  });
+  const ws4 = XLSX.utils.aoa_to_sheet(eduRows);
+  ws4['!cols']=[{wch:4},{wch:22},{wch:22},{wch:18},{wch:14},{wch:10},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws4, '교육일정');
+
+  /* ── 다운로드 ── */
+  XLSX.writeFile(wb, `AX_Champion_현황_${dateStr}.xlsx`);
+}
+window.downloadExcel=downloadExcel;
 </script>
 </body>
 </html>
