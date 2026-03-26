@@ -433,14 +433,15 @@ window._G=[
   ]},
   {name:'재무관리그룹',leader:'유성현 상무',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Digital',dept:'재경팀_MD',name:'이윤정',rank:'부장',tasks:[]},
-    {co:'Metanet Digital',dept:'경영관리팀_MD',name:'박기영',rank:'이사',tasks:[]},
     {co:'rockPLACE',dept:'Finance & Sales Support 2T_RP',name:'한연숙',rank:'부장',tasks:[]},
     {co:'rockPLACE',dept:'Finance & Sales Support 1T_RP',name:'서효숙',rank:'차장',tasks:[]},
     {co:'rockPLACE',dept:'Finance & Sales Support 1T_RP',name:'김가영',rank:'차장',tasks:[]},
     {co:'rockPLACE',dept:'Finance & Sales Support 2T_RP',name:'이희정',rank:'차장',tasks:[]},
+    {co:'MetanetX',dept:'Finance T_MX',name:'김소연',rank:'과장',tasks:[]},
     {co:'Metanet Digital',dept:'재경팀_MD',name:'허지은',rank:'대리',tasks:[]},
     {co:'Metanet Digital',dept:'재경팀_MD',name:'임수정',rank:'대리',tasks:[]},
     {co:'Metanet Digital',dept:'재경팀_MD',name:'배채윤',rank:'대리',tasks:[]},
+    {co:'MetanetX',dept:'Finance T_MX',name:'신하영',rank:'대리',tasks:[]},
   ]},
   {name:'인사총무팀',leader:'서준서 상무',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Digital',dept:'총무팀_MD',name:'임동진',rank:'차장',tasks:[]},
@@ -456,8 +457,6 @@ window._G=[
   {name:'MX Planning T',leader:'박선종 이사',color:'#185FA5',tasks:{llm:'',rag:''},members:[
     {co:'MetanetX',dept:'Mgt Planning T_MX',name:'김정희',rank:'차장',tasks:[]},
     {co:'MetanetX',dept:'Mgt Planning T_MX',name:'이서희',rank:'과장',tasks:[]},
-    {co:'MetanetX',dept:'Finance T_MX',name:'신하영',rank:'대리',tasks:[]},
-    {co:'MetanetX',dept:'Finance T_MX',name:'김소연',rank:'대리',tasks:[]},
   ]},
   {name:'Corporate Function',leader:'김희경 상무',color:'#7F77DD',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Global',dept:'Corporate Function_MG',name:'김희경',rank:'부장',tasks:[]},
@@ -466,6 +465,9 @@ window._G=[
   {name:'홍보그룹',leader:'조자영 부장',color:'#7F77DD',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Global',dept:'홍보그룹_MG',name:'권세창',rank:'차장',tasks:[]},
     {co:'Metanet Global',dept:'홍보그룹_MG',name:'송윤서',rank:'사원',tasks:[]},
+  ]},
+  {name:'경영관리팀',leader:'박기영 이사',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
+    {co:'Metanet Digital',dept:'경영관리팀_MD',name:'박기영',rank:'이사',tasks:[]},
   ]},
 ];
 
@@ -708,15 +710,17 @@ function renderTask(){
 
 
       const memberDiv=document.createElement('div');
-      memberDiv.style.cssText='margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd)';
+      memberDiv.style.cssText='margin-bottom:10px;border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden';
       memberDiv.innerHTML=`
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div onclick="toggleMember(${gidx},${midx})" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg2);cursor:pointer;user-select:none" id="mhd-${gidx}-${midx}">
+          <span style="font-size:11px;color:var(--tx3);transition:transform .2s" id="marr-${gidx}-${midx}">▶</span>
           <span style="font-size:13px;font-weight:600;color:var(--tx)">${m.name}</span>
           <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${rc}22;color:${rc}">${m.rank}</span>
           <span style="font-size:10px;color:var(--tx2)">${cleanDept(m.dept)}</span>
-          <button onclick="addMemberTask(${gidx},${midx})" style="margin-left:auto;font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);cursor:pointer;font-weight:500">+ 과제 추가</button>
+          <span style="font-size:10px;color:var(--tx3);margin-left:4px" id="mtask-cnt-${gidx}-${midx}">과제 0건</span>
+          <button onclick="event.stopPropagation();addMemberTask(${gidx},${midx})" style="margin-left:auto;font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);cursor:pointer;font-weight:500">+ 과제 추가</button>
         </div>
-        <div id="member-tasks-${gidx}-${midx}"></div>`;
+        <div id="member-tasks-${gidx}-${midx}" style="display:none;padding:12px"></div>`;
       body.appendChild(memberDiv);
     });
 
@@ -963,8 +967,21 @@ function rerenderMemberTasks(gi, mi){
     </div>`).join('');
 
   el.innerHTML = tasksHtml + (!(m.tasks&&m.tasks.length)?'<div style="font-size:11px;color:var(--tx3);padding:6px 0">아직 입력된 과제가 없어요. 우측 상단 + 과제 추가를 눌러주세요.</div>':'');
+  // 과제 개수 업데이트
+  const cntEl=document.getElementById(`mtask-cnt-${gi}-${mi}`);
+  if(cntEl)cntEl.textContent=`과제 ${m.tasks?m.tasks.length:0}건`;
 }
 window.rerenderMemberTasks=rerenderMemberTasks;
+
+function toggleMember(gi,mi){
+  const el=document.getElementById(`member-tasks-${gi}-${mi}`);
+  const arr=document.getElementById(`marr-${gi}-${mi}`);
+  if(!el)return;
+  const open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  if(arr)arr.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+}
+window.toggleMember=toggleMember;
 
 window.closeOv=closeOv;
 window.sw=sw;
