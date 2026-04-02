@@ -376,7 +376,7 @@ window._push=function(){
     setSync('saving');
     try{
       await setDoc(DOC,{
-        groups: window._G.map(g=>({name:g.name,tasks:JSON.parse(JSON.stringify(g.tasks)),keyTask_llm:g.keyTask_llm||'',keyTask_rag:g.keyTask_rag||'',members:g.members.map(m=>({name:m.name,dept:m.dept,tasks:JSON.parse(JSON.stringify(m.tasks))}))})),
+        groups: window._G.map(g=>({name:g.name,tasks:JSON.parse(JSON.stringify(g.tasks)),keyTask_llm:g.keyTask_llm||'',keyTask_rag:g.keyTask_rag||'',joint:g.joint||false,jointTasks:JSON.parse(JSON.stringify(g.jointTasks||[])),members:g.members.map(m=>({name:m.name,dept:m.dept,tasks:JSON.parse(JSON.stringify(m.tasks))}))})),
         notices:  JSON.parse(JSON.stringify(window._notices||[])),
         msRows:   JSON.parse(JSON.stringify(window._msRows||[])),
         eduRows:  JSON.parse(JSON.stringify(window._eduRows||[])),
@@ -397,6 +397,7 @@ function apply(data){
       g.tasks=saved.tasks||{llm:'',rag:''};
       if(saved.keyTask_llm!==undefined)g.keyTask_llm=saved.keyTask_llm;
       if(saved.keyTask_rag!==undefined)g.keyTask_rag=saved.keyTask_rag;
+      if(saved.jointTasks)g.jointTasks=saved.jointTasks;
       saved.members&&saved.members.forEach(sm=>{
         const m=g.members.find(x=>x.name===sm.name&&x.dept===sm.dept);
         if(m)m.tasks=sm.tasks||[];
@@ -444,7 +445,7 @@ window._G=[
     {co:'Metanet Digital',dept:'재경팀_MD',name:'배채윤',rank:'대리',tasks:[]},
     {co:'MetanetX',dept:'Finance T_MX',name:'신하영',rank:'대리',tasks:[]},
   ]},
-  {name:'인사총무팀',leader:'서준서 상무',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
+  {name:'인사총무그룹',leader:'서준서 상무',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Digital',dept:'총무팀_MD',name:'임동진',rank:'차장',tasks:[]},
     {co:'Metanet Digital',dept:'인사팀_MD',name:'한새별',rank:'차장',tasks:[]},
     {co:'Metanet Digital',dept:'인사팀_MD',name:'안혜지',rank:'과장',tasks:[]},
@@ -459,10 +460,10 @@ window._G=[
     {co:'MetanetX',dept:'Mgt Planning T_MX',name:'김정희',rank:'차장',tasks:[]},
     {co:'MetanetX',dept:'Mgt Planning T_MX',name:'이서희',rank:'과장',tasks:[]},
   ]},
-  {name:'Corporate Function',leader:'김희경 상무',color:'#7F77DD',tasks:{llm:'',rag:''},members:[
+  {name:'Corporate Function/경영관리팀',leader:'김희경 상무',color:'#7F77DD',joint:true,tasks:{llm:'',rag:''},members:[
+    {co:'Metanet Digital',dept:'경영관리팀_MD',name:'박기영',rank:'이사',tasks:[]},
     {co:'Metanet Global',dept:'Corporate Function_MG',name:'김희경',rank:'부장',tasks:[]},
     {co:'Metanet Global',dept:'Corporate Function_MG',name:'이명림',rank:'과장',tasks:[]},
-    {co:'Metanet Digital',dept:'경영관리팀_MD',name:'박기영',rank:'이사',tasks:[]},
   ]},
   {name:'홍보그룹',leader:'조자영 부장',color:'#7F77DD',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Global',dept:'홍보그룹_MG',name:'권세창',rank:'차장',tasks:[]},
@@ -499,7 +500,7 @@ function buildOverviewGroups(){
   const el=document.getElementById('overview-group-list');
   if(!el)return;
   el.innerHTML=window._G.map((g,gi)=>{
-    const allTasks=g.members.flatMap(m=>m.tasks||[]);
+    const allTasks=[...g.members.flatMap(m=>m.tasks||[]),...(g.jointTasks||[])];
     const llmTasks=allTasks.filter(t=>t.type==='llm');
     const ragTasks=allTasks.filter(t=>t.type==='rag'||t.type==='agent');
     const llmAvg=llmTasks.length?Math.round(llmTasks.reduce((s,t)=>s+(t.progress||0),0)/llmTasks.length):0;
@@ -541,7 +542,10 @@ window.buildOverviewGroups=buildOverviewGroups;
 
 // ── 진행률 업데이트 ──
 function updateProg(){
-  const all=window._G.flatMap(g=>g.members.flatMap(m=>m.tasks||[]));
+  const all=window._G.flatMap(g=>[
+    ...g.members.flatMap(m=>m.tasks||[]),
+    ...(g.jointTasks||[])
+  ]);
   const avg=all.length?Math.round(all.reduce((s,t)=>s+(t.progress||0),0)/all.length):0;
   document.getElementById('overall-prog').textContent=avg+'%';
   buildOverviewGroups();
@@ -659,7 +663,7 @@ function renderTask(){
     let members=[...g.members];
     if(!members.length)return;
     members.sort((a,b)=>{
-      if(g.name==='인사총무팀'){const p=['임동진','한새별'],ai=p.indexOf(a.name),bi=p.indexOf(b.name);if(ai>-1&&bi>-1)return ai-bi;if(ai>-1)return -1;if(bi>-1)return 1;}
+      if(g.name==='인사총무그룹'){const p=['임동진','한새별'],ai=p.indexOf(a.name),bi=p.indexOf(b.name);if(ai>-1&&bi>-1)return ai-bi;if(ai>-1)return -1;if(bi>-1)return 1;}
       return getRankIdx(a.rank)-getRankIdx(b.rank);
     });
     const wrap=document.createElement('div');wrap.className='team-block';
@@ -675,6 +679,47 @@ function renderTask(){
     wrap.appendChild(hd);
 
     const body=document.createElement('div');body.className='team-body';body.id='gb'+gi;
+    // joint 그룹: 세 명이 하나의 공동 과제 탭으로
+    if(g.joint){
+      body.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd)">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;display:flex;align-items:center;gap:5px"><span class="tag-llm">LLM 활용</span>팀 핵심과제명 (개요에 표시)</div>
+            <input class="f-inp" type="text" value="${g.keyTask_llm||''}" placeholder="예) Copilot 기반 보고서 자동화" oninput="_G[${gi}].keyTask_llm=this.value;buildOverviewGroups();push()">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;display:flex;align-items:center;gap:5px"><span class="tag-rag">AI Agent·RAG</span>팀 핵심과제명 (개요에 표시)</div>
+            <input class="f-inp" type="text" value="${g.keyTask_rag||''}" placeholder="예) 사내규정 RAG 챗봇 구축" oninput="_G[${gi}].keyTask_rag=this.value;buildOverviewGroups();push()">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px">팀 공통 LLM 활용 과제 내용</div>
+            <textarea class="f-ta" placeholder="그룹 공통 LLM 활용 과제 상세..." oninput="_G[${gi}].tasks.llm=this.value;push()">${g.tasks.llm||''}</textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px">팀 공통 AI Agent·RAG 과제 내용</div>
+            <textarea class="f-ta" placeholder="그룹 공통 Agent/RAG 과제 상세..." oninput="_G[${gi}].tasks.rag=this.value;push()">${g.tasks.rag||''}</textarea>
+          </div>
+        </div>
+        <div id="summary-result-${gi}" style="display:none;margin-bottom:12px;background:var(--pu-lt);border-left:3px solid var(--pu);border-radius:0 var(--r) var(--r) 0;padding:10px 13px;font-size:12px;color:var(--pu-dk)"></div>
+
+        <!-- 공동 과제 탭 -->
+        <div style="background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--bd);overflow:hidden">
+          <div style="padding:10px 14px;background:var(--pu-lt);border-bottom:0.5px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:600;color:var(--pu-dk)">공동 과제</span>
+            <span style="font-size:11px;color:var(--pu-dk);opacity:.7">|</span>
+            ${g.members.map(m=>{
+              const rc=rankColors[m.rank]||'#888';
+              return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 9px;border-radius:20px;background:${rc}22;color:${rc};font-weight:500">${m.name} <span style="font-size:10px;opacity:.8">${m.rank}</span></span>`;
+            }).join('')}
+            <button onclick="addJointTask(${gi})" style="margin-left:auto;font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);cursor:pointer;font-weight:500">+ 과제 추가</button>
+          </div>
+          <div id="joint-tasks-${gi}" style="padding:12px"></div>
+        </div>`;
+      wrap.appendChild(body);
+      el.appendChild(wrap);
+      return;
+    }
+
     // 그룹 공통 과제
     body.innerHTML=`
       <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd)">
@@ -728,9 +773,13 @@ function renderTask(){
   });
   // 모든 멤버 과제 렌더링
   window._G.forEach((g,gi)=>{
-    g.members.forEach((m,mi)=>{
-      rerenderMemberTasks(gi,mi);
-    });
+    if(g.joint){
+      renderJointTasks(gi);
+    } else {
+      g.members.forEach((m,mi)=>{
+        rerenderMemberTasks(gi,mi);
+      });
+    }
   });
   updateProg();
 }
@@ -921,6 +970,61 @@ function addMemberTask(gi, mi){
   updateProg();
   push();
 }
+// ── 공동 과제 (joint 그룹) ──
+function addJointTask(gi){
+  if(!window._G[gi].jointTasks) window._G[gi].jointTasks=[];
+  window._G[gi].jointTasks.push({id:newTaskId(),name:'',progress:0,status:'미시작',type:'llm',content:'',plan:'',note:''});
+  renderJointTasks(gi);
+  updateProg();
+  push();
+}
+window.addJointTask=addJointTask;
+
+function removeJointTask(gi,ti){
+  if(!confirm('삭제할까요?'))return;
+  window._G[gi].jointTasks.splice(ti,1);
+  renderJointTasks(gi);
+  updateProg();
+  push();
+}
+window.removeJointTask=removeJointTask;
+
+function renderJointTasks(gi){
+  const el=document.getElementById('joint-tasks-'+gi);
+  if(!el)return;
+  const tasks=window._G[gi].jointTasks||[];
+  if(!tasks.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--tx3);padding:4px 0">아직 입력된 공동 과제가 없어요. + 과제 추가를 눌러주세요.</div>';
+    return;
+  }
+  el.innerHTML=tasks.map((t,ti)=>`
+    <div class="gtask-block" style="margin-bottom:10px">
+      <div class="gtask-hd">
+        <span class="gtask-title">공동과제 ${ti+1}</span>
+        <select class="f-sel" style="width:130px;font-size:10px;padding:2px 6px" onchange="_G[${gi}].jointTasks[${ti}].type=this.value;updateProg();push()">
+          <option value="llm"${(t.type||'llm')==='llm'?' selected':''}>🔵 LLM 활용</option>
+          <option value="agent"${t.type==='agent'?' selected':''}>🟣 AI Agent·RAG</option>
+        </select>
+        <button class="btn-sm btn-sm-co" onclick="removeJointTask(${gi},${ti})">삭제</button>
+      </div>
+      <div class="gtask-fields">
+        <div class="gtask-field" style="grid-column:1/-1"><label>과제명</label><input class="f-inp" type="text" value="${t.name||''}" placeholder="공동 과제명" oninput="_G[${gi}].jointTasks[${ti}].name=this.value;updateProg();push()"></div>
+        <div class="gtask-field" style="grid-column:1/-1">
+          <label>진행률</label>
+          <div class="pct-row">
+            <input type="range" min="0" max="100" value="${t.progress||0}" oninput="this.nextElementSibling.textContent=this.value+'%';_G[${gi}].jointTasks[${ti}].progress=+this.value;updateProg();push()">
+            <span class="pct-val">${t.progress||0}%</span>
+          </div>
+        </div>
+        <div class="gtask-field"><label>상태</label><select class="f-sel" onchange="_G[${gi}].jointTasks[${ti}].status=this.value;push()"><option${(t.status||'미시작')==='미시작'?' selected':''}>미시작</option><option${t.status==='진행중'?' selected':''}>진행중</option><option${t.status==='완료'?' selected':''}>완료</option><option${t.status==='보류'?' selected':''}>보류</option></select></div>
+        <div class="gtask-field"><label>달성 내용</label><textarea class="f-ta" style="min-height:44px" placeholder="현재까지 달성한 내용" oninput="_G[${gi}].jointTasks[${ti}].content=this.value;push()">${t.content||''}</textarea></div>
+        <div class="gtask-field"><label>향후 계획</label><textarea class="f-ta" style="min-height:44px" placeholder="앞으로의 계획" oninput="_G[${gi}].jointTasks[${ti}].plan=this.value;push()">${t.plan||''}</textarea></div>
+        <div class="gtask-field" style="grid-column:1/-1"><label>비고</label><textarea class="f-ta" style="min-height:36px" placeholder="기타 사항" oninput="_G[${gi}].jointTasks[${ti}].note=this.value;push()">${t.note||''}</textarea></div>
+      </div>
+    </div>`).join('');
+}
+window.renderJointTasks=renderJointTasks;
+
 window.addMemberTask=addMemberTask;
 
 function removeMemberTask(gi, mi, ti){
