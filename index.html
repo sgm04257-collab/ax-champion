@@ -391,8 +391,11 @@ window._push=function(){
 function apply(data){
   if(!data)return;
   if(data.sid===sid)return; // 내 변경 스킵
-  // 이름 변경 매핑 테이블 (구이름 → 새이름)
-  const nameMap={'인사총무팀':'인사총무그룹','Corporate Function':'Corporate Function/경영관리팀'};
+  // 그룹 이름 변경 매핑 (구이름 → 새이름)
+  const nameMap={
+    '인사총무팀':'인사총무그룹',
+    'Corporate Function':'Corporate Function/경영관리팀'
+  };
   if(data.groups) data.groups.forEach(saved=>{
     const lookupName=nameMap[saved.name]||saved.name;
     const g=window._G.find(x=>x.name===lookupName||x.name===saved.name);
@@ -401,9 +404,19 @@ function apply(data){
       if(saved.keyTask_llm!==undefined)g.keyTask_llm=saved.keyTask_llm;
       if(saved.keyTask_rag!==undefined)g.keyTask_rag=saved.keyTask_rag;
       if(saved.jointTasks)g.jointTasks=saved.jointTasks;
+      // 멤버 매칭: name만으로 (dept 변경, 그룹 이동 케이스 대응)
       saved.members&&saved.members.forEach(sm=>{
-        const m=g.members.find(x=>x.name===sm.name&&x.dept===sm.dept);
-        if(m)m.tasks=sm.tasks||[];
+        const m=g.members.find(x=>x.name===sm.name);
+        if(m&&sm.tasks) m.tasks=sm.tasks;
+      });
+    } else {
+      // 그룹 못 찾은 경우: 멤버 이름으로 전체 그룹 탐색 (그룹 이동 케이스)
+      saved.members&&saved.members.forEach(sm=>{
+        if(!sm.tasks||!sm.tasks.length)return;
+        window._G.forEach(grp=>{
+          const m=grp.members.find(x=>x.name===sm.name);
+          if(m) m.tasks=sm.tasks;
+        });
       });
     }
   });
