@@ -390,8 +390,7 @@ window._push=function(){
 
 function apply(data){
   if(!data)return;
-  if(data.sid===sid)return; // 내 변경 스킵
-  // 그룹 이름 변경 매핑 (구이름 → 새이름)
+  if(data.sid===sid)return;
   const nameMap={
     '인사총무팀':'인사총무그룹',
     'Corporate Function':'Corporate Function/경영관리팀'
@@ -404,13 +403,11 @@ function apply(data){
       if(saved.keyTask_llm!==undefined)g.keyTask_llm=saved.keyTask_llm;
       if(saved.keyTask_rag!==undefined)g.keyTask_rag=saved.keyTask_rag;
       if(saved.jointTasks)g.jointTasks=saved.jointTasks;
-      // 멤버 매칭: name만으로 (dept 변경, 그룹 이동 케이스 대응)
       saved.members&&saved.members.forEach(sm=>{
         const m=g.members.find(x=>x.name===sm.name);
         if(m&&sm.tasks) m.tasks=sm.tasks;
       });
     } else {
-      // 그룹 못 찾은 경우: 멤버 이름으로 전체 그룹 탐색 (그룹 이동 케이스)
       saved.members&&saved.members.forEach(sm=>{
         if(!sm.tasks||!sm.tasks.length)return;
         window._G.forEach(grp=>{
@@ -439,7 +436,6 @@ const rankOrder=['상무','이사','부장','차장','과장','대리','사원',
 const coColors={'Metanet Digital':'#1D9E75','MetanetX':'#185FA5','Metanet Global':'#7F77DD','rockPLACE':'#D85A30'};
 const rankColors={'상무':'#D85A30','이사':'#BA7517','부장':'#1D9E75','차장':'#185FA5','과장':'#7F77DD','대리':'#5DCAA5','사원':'#888780'};
 
-// 그룹 + 멤버 구조 (tasks: [{id,llmTask,ragTask,name,progress,content,plan,note,status}])
 window._G=[
    {name:'ISS팀',leader:'이민석 상무',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
     {co:'Metanet Digital',dept:'ISS팀_MD',name:'황아름',rank:'부장',tasks:[]},
@@ -468,7 +464,8 @@ window._G=[
     {co:'Metanet Digital',dept:'인사팀_MD',name:'유설아',rank:'과장',tasks:[]},
     {co:'Metanet Digital',dept:'인사팀_MD',name:'정민경',rank:'사원',tasks:[]},
   ]},
-  {name:'법무그룹',leader:'한혜선 상무',color:'#1D9E75',tasks:{llm:'',rag:''},members:[
+  // ★ 법무그룹: joint:true 추가 → 공동과제 UI로 표시
+  {name:'법무그룹',leader:'한혜선 상무',color:'#1D9E75',joint:true,tasks:{llm:'',rag:''},jointTasks:[],members:[
     {co:'Metanet Digital',dept:'법무그룹_MD',name:'이현범',rank:'부장',tasks:[]},
     {co:'Metanet Digital',dept:'법무그룹_MD',name:'이예진',rank:'사원',tasks:[]},
   ]},
@@ -476,7 +473,7 @@ window._G=[
     {co:'MetanetX',dept:'Mgt Planning T_MX',name:'김정희',rank:'차장',tasks:[]},
     {co:'MetanetX',dept:'Mgt Planning T_MX',name:'이서희',rank:'과장',tasks:[]},
   ]},
-  {name:'Corporate Function/경영관리팀',leader:'김희경 상무',color:'#7F77DD',joint:true,tasks:{llm:'',rag:''},members:[
+  {name:'Corporate Function/경영관리팀',leader:'김희경 상무',color:'#7F77DD',joint:true,tasks:{llm:'',rag:''},jointTasks:[],members:[
     {co:'Metanet Digital',dept:'경영관리팀_MD',name:'박기영',rank:'이사',tasks:[]},
     {co:'Metanet Global',dept:'Corporate Function_MG',name:'김희경',rank:'부장',tasks:[]},
     {co:'Metanet Global',dept:'Corporate Function_MG',name:'이명림',rank:'과장',tasks:[]},
@@ -511,7 +508,7 @@ function getRankIdx(r){const i=rankOrder.indexOf(r);return i>-1?i:99;}
 function push(){if(window._push)window._push();}
 function newTaskId(){return Date.now()+Math.random().toString(36).slice(2,6);}
 
-// ── 개요: 그룹별 과제 현황 (LLM/RAG 분리) ──
+// ── 개요: 그룹별 과제 현황 ──
 function buildOverviewGroups(){
   const el=document.getElementById('overview-group-list');
   if(!el)return;
@@ -521,11 +518,8 @@ function buildOverviewGroups(){
     const ragTasks=allTasks.filter(t=>t.type==='rag'||t.type==='agent');
     const llmAvg=llmTasks.length?Math.round(llmTasks.reduce((s,t)=>s+(t.progress||0),0)/llmTasks.length):0;
     const ragAvg=ragTasks.length?Math.round(ragTasks.reduce((s,t)=>s+(t.progress||0),0)/ragTasks.length):0;
-
-    // 그룹 핵심과제 (관리자가 직접 입력하거나 AI 요약된 것)
     const llmKey=g.keyTask_llm||'';
     const ragKey=g.keyTask_rag||'';
-
     return `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:0.5px solid var(--bd)">
       <div style="display:flex;flex-direction:column;gap:2px;justify-content:center">
         <div style="font-size:12px;font-weight:600;color:var(--tx)">${g.name}</div>
@@ -568,109 +562,27 @@ function updateProg(){
 }
 window.updateProg=updateProg;
 
-// ── AI 팀과제 도출 (Claude.ai 연동) ──
+// ── AI 팀과제 도출 ──
 function summarizeGroupTasks(gi){
   const g=window._G[gi];
   const allTasks=g.members.flatMap(m=>(m.tasks||[]).map(t=>({member:m.name,rank:m.rank,name:t.name||'',type:t.type||'llm',content:t.content||'',plan:t.plan||'',progress:t.progress||0})));
   if(!allTasks.filter(t=>t.name).length){alert('먼저 팀원들의 개인 과제를 입력해주세요!');return;}
-
-  const llmList=allTasks.filter(t=>t.type==='llm'&&t.name)
-    .map(t=>`- ${t.member}(${t.rank}): ${t.name}${t.content?' / 달성내용: '+t.content:''}${t.plan?' / 향후계획: '+t.plan:''} (진행률 ${t.progress}%)`).join('\n');
-  const ragList=allTasks.filter(t=>t.type==='agent'&&t.name)
-    .map(t=>`- ${t.member}(${t.rank}): ${t.name}${t.content?' / 달성내용: '+t.content:''}${t.plan?' / 향후계획: '+t.plan:''} (진행률 ${t.progress}%)`).join('\n');
-
+  const llmList=allTasks.filter(t=>t.type==='llm'&&t.name).map(t=>`- ${t.member}(${t.rank}): ${t.name}${t.content?' / 달성내용: '+t.content:''}${t.plan?' / 향후계획: '+t.plan:''} (진행률 ${t.progress}%)`).join('\n');
+  const ragList=allTasks.filter(t=>t.type==='agent'&&t.name).map(t=>`- ${t.member}(${t.rank}): ${t.name}${t.content?' / 달성내용: '+t.content:''}${t.plan?' / 향후계획: '+t.plan:''} (진행률 ${t.progress}%)`).join('\n');
   const llmCount=allTasks.filter(t=>t.type==='llm'&&t.name).length;
   const ragCount=allTasks.filter(t=>t.type==='agent'&&t.name).length;
-  const prompt=`당신은 기업 AX(AI전환) 프로젝트 전문 컨설턴트입니다. 추가 질문 없이 아래 정보만으로 즉시 분석하여 결과를 출력해주세요.
-
-## 분석 대상
-- 팀명: ${g.name} (대표: ${g.leader})
-- LLM 활용 과제 ${llmCount}건, AI Agent·RAG 과제 ${ragCount}건
-
-## 개인 과제 현황
-${llmCount>0?`[LLM 활용 과제]
-${llmList}`:''}
-${ragCount>0?`
-[AI Agent·RAG 과제]
-${ragList}`:''}
-
-## 출력 형식 (아래 형식 그대로, 추가 질문 없이 바로 작성)
-
-**LLM 활용 팀 핵심과제명:** (15자 이내로 간결하게)
-**추진 방향:** 개인 과제들을 통합한 팀 차원의 추진 방향을 2문장으로 작성
-
-**AI Agent·RAG 팀 핵심과제명:** (15자 이내로 간결하게)
-**추진 방향:** 개인 과제들을 통합한 팀 차원의 추진 방향을 2문장으로 작성
-
-**종합:** 두 영역을 아우르는 팀 전체 방향을 1문장으로 작성
-
-※ 과제가 없는 영역은 "해당 없음"으로 표기`;
-
-  // 클립보드 복사
+  const prompt=`당신은 기업 AX(AI전환) 프로젝트 전문 컨설턴트입니다. 추가 질문 없이 아래 정보만으로 즉시 분석하여 결과를 출력해주세요.\n\n## 분석 대상\n- 팀명: ${g.name} (대표: ${g.leader})\n- LLM 활용 과제 ${llmCount}건, AI Agent·RAG 과제 ${ragCount}건\n\n## 개인 과제 현황\n${llmCount>0?`[LLM 활용 과제]\n${llmList}`:''}\n${ragCount>0?`\n[AI Agent·RAG 과제]\n${ragList}`:''}\n\n## 출력 형식 (아래 형식 그대로, 추가 질문 없이 바로 작성)\n\n**LLM 활용 팀 핵심과제명:** (15자 이내로 간결하게)\n**추진 방향:** 개인 과제들을 통합한 팀 차원의 추진 방향을 2문장으로 작성\n\n**AI Agent·RAG 팀 핵심과제명:** (15자 이내로 간결하게)\n**추진 방향:** 개인 과제들을 통합한 팀 차원의 추진 방향을 2문장으로 작성\n\n**종합:** 두 영역을 아우르는 팀 전체 방향을 1문장으로 작성\n\n※ 과제가 없는 영역은 "해당 없음"으로 표기`;
   navigator.clipboard.writeText(prompt).then(()=>{
     const el=document.getElementById('summary-result-'+gi);
     el.style.display='block';
-    el.innerHTML=`
-      <div style="font-size:12px;font-weight:600;color:var(--pu-dk);margin-bottom:8px">✨ 팀과제 도출 프롬프트 복사 완료!</div>
-      <div style="font-size:12px;color:var(--pu-dk);line-height:1.8;margin-bottom:10px">
-        📋 프롬프트가 클립보드에 복사되었어요.<br>
-        아래 버튼으로 Claude.ai를 열고, 복사된 내용을 붙여넣으세요 (Ctrl+V).<br>
-        결과를 받으면 아래 입력란에 직접 붙여넣어 주세요.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a href="https://claude.ai" target="_blank" style="font-size:11px;padding:5px 14px;border-radius:20px;border:none;background:#1D9E75;color:#fff;cursor:pointer;font-weight:600;text-decoration:none">🤖 Claude.ai 열기 →</a>
-        <button onclick="document.getElementById('summary-result-${gi}').style.display='none'" style="font-size:11px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx2);cursor:pointer">닫기</button>
-      </div>
-      <div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:var(--r);border:0.5px solid var(--bd)">
-        <div style="font-size:10px;font-weight:600;color:var(--tx2);margin-bottom:4px">복사된 프롬프트 미리보기:</div>
-        <div style="font-size:10px;color:var(--tx2);white-space:pre-wrap;max-height:80px;overflow:hidden;text-overflow:ellipsis">${prompt.slice(0,300)}...</div>
-      </div>`;
+    el.innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--pu-dk);margin-bottom:8px">✨ 팀과제 도출 프롬프트 복사 완료!</div><div style="font-size:12px;color:var(--pu-dk);line-height:1.8;margin-bottom:10px">📋 프롬프트가 클립보드에 복사되었어요.<br>아래 버튼으로 Claude.ai를 열고, 복사된 내용을 붙여넣으세요 (Ctrl+V).<br>결과를 받으면 아래 입력란에 직접 붙여넣어 주세요.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="https://claude.ai" target="_blank" style="font-size:11px;padding:5px 14px;border-radius:20px;border:none;background:#1D9E75;color:#fff;cursor:pointer;font-weight:600;text-decoration:none">🤖 Claude.ai 열기 →</a><button onclick="document.getElementById('summary-result-${gi}').style.display='none'" style="font-size:11px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx2);cursor:pointer">닫기</button></div>`;
   }).catch(()=>{
-    // 클립보드 실패시 텍스트 영역으로 표시
     const el=document.getElementById('summary-result-'+gi);
     el.style.display='block';
-    el.innerHTML=`
-      <div style="font-size:12px;font-weight:600;color:var(--pu-dk);margin-bottom:8px">✨ 팀과제 도출 프롬프트</div>
-      <div style="font-size:12px;color:var(--pu-dk);margin-bottom:8px">아래 내용을 복사해서 Claude.ai에 붙여넣으세요.</div>
-      <textarea style="width:100%;font-size:11px;border:0.5px solid var(--bd);border-radius:var(--r);padding:8px;background:var(--bg);color:var(--tx);min-height:120px;font-family:monospace;line-height:1.5">${prompt}</textarea>
-      <div style="margin-top:8px;display:flex;gap:8px">
-        <a href="https://claude.ai" target="_blank" style="font-size:11px;padding:5px 14px;border-radius:20px;border:none;background:#1D9E75;color:#fff;cursor:pointer;font-weight:600;text-decoration:none">🤖 Claude.ai 열기 →</a>
-        <button onclick="document.getElementById('summary-result-${gi}').style.display='none'" style="font-size:11px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx2);cursor:pointer">닫기</button>
-      </div>`;
+    el.innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--pu-dk);margin-bottom:8px">✨ 팀과제 도출 프롬프트</div><div style="font-size:12px;color:var(--pu-dk);margin-bottom:8px">아래 내용을 복사해서 Claude.ai에 붙여넣으세요.</div><textarea style="width:100%;font-size:11px;border:0.5px solid var(--bd);border-radius:var(--r);padding:8px;background:var(--bg);color:var(--tx);min-height:120px;font-family:monospace;line-height:1.5">${prompt}</textarea><div style="margin-top:8px;display:flex;gap:8px"><a href="https://claude.ai" target="_blank" style="font-size:11px;padding:5px 14px;border-radius:20px;border:none;background:#1D9E75;color:#fff;cursor:pointer;font-weight:600;text-decoration:none">🤖 Claude.ai 열기 →</a><button onclick="document.getElementById('summary-result-${gi}').style.display='none'" style="font-size:11px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg2);color:var(--tx2);cursor:pointer">닫기</button></div>`;
   });
 }
 window.summarizeGroupTasks=summarizeGroupTasks;
-
-function applyLlmSummary(gi,btn){
-  const g=window._G[gi];
-  const text=g._lastSummary||'';
-  const match=text.match(/LLM 활용 팀 핵심과제[:\s*]+([^\n*]+)/);
-  const summary=match?match[1].trim():'';
-  if(summary){
-    g.keyTask_llm=summary;
-    // 입력창 업데이트
-    const inputs=document.querySelectorAll('#gb'+gi+' input[type="text"]');
-    if(inputs[0])inputs[0].value=summary;
-    buildOverviewGroups();push();
-    btn.textContent='✓ 적용됨';btn.style.background='#E1F5EE';btn.style.color='#085041';
-  }
-}
-window.applyLlmSummary=applyLlmSummary;
-
-function applyRagSummary(gi,btn){
-  const g=window._G[gi];
-  const text=g._lastSummary||'';
-  const match=text.match(/AI Agent·RAG 팀 핵심과제[:\s*]+([^\n*]+)/);
-  const summary=match?match[1].trim():'';
-  if(summary){
-    g.keyTask_rag=summary;
-    const inputs=document.querySelectorAll('#gb'+gi+' input[type="text"]');
-    if(inputs[1])inputs[1].value=summary;
-    buildOverviewGroups();push();
-    btn.textContent='✓ 적용됨';btn.style.background='#EEEDFE';btn.style.color='#3C3489';
-  }
-}
-window.applyRagSummary=applyRagSummary;
 
 // ── 과제 현황 렌더링 ──
 function renderTask(){
@@ -683,8 +595,8 @@ function renderTask(){
       return getRankIdx(a.rank)-getRankIdx(b.rank);
     });
     const wrap=document.createElement('div');wrap.className='team-block';
-    const totalTasks=g.members.flatMap(m=>m.tasks||[]).length;
-    const avgProg=totalTasks?Math.round(g.members.flatMap(m=>m.tasks||[]).reduce((s,t)=>s+(t.progress||0),0)/totalTasks):0;
+    const totalTasks=g.members.flatMap(m=>m.tasks||[]).length + (g.jointTasks||[]).length;
+    const avgProg=totalTasks?Math.round([...g.members.flatMap(m=>m.tasks||[]),...(g.jointTasks||[])].reduce((s,t)=>s+(t.progress||0),0)/totalTasks):0;
     const hd=document.createElement('div');hd.className='team-hd';
     hd.innerHTML=`<span class="arr" id="arr${gi}">▶</span>
       <span class="team-name">${g.name}</span>
@@ -695,17 +607,18 @@ function renderTask(){
     wrap.appendChild(hd);
 
     const body=document.createElement('div');body.className='team-body';body.id='gb'+gi;
-    // joint 그룹: 세 명이 하나의 공동 과제 탭으로
+
+    // ── joint 그룹 (공동과제 UI) ──
     if(g.joint){
       body.innerHTML=`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd)">
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;display:flex;align-items:center;gap:5px"><span class="tag-llm">LLM 활용</span>팀 핵심과제명 (개요에 표시)</div>
-            <input class="f-inp" type="text" value="${g.keyTask_llm||''}" placeholder="예) Copilot 기반 보고서 자동화" oninput="_G[${gi}].keyTask_llm=this.value;buildOverviewGroups();push()">
+            <input class="f-inp" type="text" value="${g.keyTask_llm||''}" placeholder="예) AI 기반 업무 생산성 향상" oninput="_G[${gi}].keyTask_llm=this.value;buildOverviewGroups();push()">
           </div>
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;display:flex;align-items:center;gap:5px"><span class="tag-rag">AI Agent·RAG</span>팀 핵심과제명 (개요에 표시)</div>
-            <input class="f-inp" type="text" value="${g.keyTask_rag||''}" placeholder="예) 사내규정 RAG 챗봇 구축" oninput="_G[${gi}].keyTask_rag=this.value;buildOverviewGroups();push()">
+            <input class="f-inp" type="text" value="${g.keyTask_rag||''}" placeholder="예) 데이터 기반 의사결정 효율화" oninput="_G[${gi}].keyTask_rag=this.value;buildOverviewGroups();push()">
           </div>
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px">팀 공통 LLM 활용 과제 내용</div>
@@ -736,7 +649,7 @@ function renderTask(){
       return;
     }
 
-    // 그룹 공통 과제
+    // ── 일반 그룹 (개인과제 UI) ──
     body.innerHTML=`
       <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd)">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -762,13 +675,10 @@ function renderTask(){
         <div id="summary-result-${gi}" style="display:none;margin-top:10px;background:var(--pu-lt);border-left:3px solid var(--pu);border-radius:0 var(--r) var(--r) 0;padding:10px 13px;font-size:12px;color:var(--pu-dk)"></div>
       </div>`;
 
-    // 멤버별 과제
     members.forEach(m=>{
       const gidx=gi;
       const midx=g.members.findIndex(x=>x.name===m.name&&x.dept===m.dept);
       const rc=rankColors[m.rank]||'#888';
-
-
       const memberDiv=document.createElement('div');
       memberDiv.style.cssText='margin-bottom:10px;border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden';
       memberDiv.innerHTML=`
@@ -787,7 +697,7 @@ function renderTask(){
     wrap.appendChild(body);
     el.appendChild(wrap);
   });
-  // 모든 멤버 과제 렌더링
+
   window._G.forEach((g,gi)=>{
     if(g.joint){
       renderJointTasks(gi);
@@ -979,14 +889,16 @@ function sw(t){
 
 // ── 유틸 ──
 function closeOv(id){document.getElementById(id).classList.remove('on');}
-// ── 과제 부분 업데이트 (깜빡임 없음) ──
+
+// ── 멤버 과제 ──
 function addMemberTask(gi, mi){
   window._G[gi].members[mi].tasks.push({id:newTaskId(),name:'',progress:0,status:'미시작',type:'llm',content:'',plan:'',note:''});
   rerenderMemberTasks(gi, mi);
   updateProg();
   push();
 }
-// ── 공동 과제 (joint 그룹) ──
+
+// ── 공동 과제 ──
 function addJointTask(gi){
   if(!window._G[gi].jointTasks) window._G[gi].jointTasks=[];
   window._G[gi].jointTasks.push({id:newTaskId(),name:'',progress:0,status:'미시작',type:'llm',content:'',plan:'',note:''});
@@ -1055,10 +967,8 @@ window.removeMemberTask=removeMemberTask;
 function rerenderMemberTasks(gi, mi){
   const g=window._G[gi];
   const m=g.members[mi];
-  const containerId=`member-tasks-${gi}-${mi}`;
-  const el=document.getElementById(containerId);
+  const el=document.getElementById(`member-tasks-${gi}-${mi}`);
   if(!el)return;
-
   const tasksHtml=(m.tasks||[]).map((t,ti)=>`
     <div class="gtask-block">
       <div class="gtask-hd">
@@ -1084,9 +994,7 @@ function rerenderMemberTasks(gi, mi){
         <div class="gtask-field" style="grid-column:1/-1"><label>비고</label><textarea class="f-ta" style="min-height:36px" placeholder="기타 사항" oninput="_G[${gi}].members[${mi}].tasks[${ti}].note=this.value;push()">${t.note||''}</textarea></div>
       </div>
     </div>`).join('');
-
   el.innerHTML = tasksHtml + (!(m.tasks&&m.tasks.length)?'<div style="font-size:11px;color:var(--tx3);padding:6px 0">아직 입력된 과제가 없어요. 우측 상단 + 과제 추가를 눌러주세요.</div>':'');
-  // 과제 개수 업데이트
   const cntEl=document.getElementById(`mtask-cnt-${gi}-${mi}`);
   if(cntEl)cntEl.textContent=`과제 ${m.tasks?m.tasks.length:0}건`;
 }
@@ -1138,53 +1046,41 @@ function downloadExcel(){
   const today = new Date();
   const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
 
-  /* ── 시트1: 과제 현황 ── */
   const taskRows = [['그룹','대표','이름','직급','소속팀','과제유형','과제명','상태','진행률(%)','달성내용','향후계획','비고']];
   window._G.forEach(g=>{
+    // 공동과제 그룹은 jointTasks 포함
+    if(g.joint && g.jointTasks && g.jointTasks.length){
+      g.jointTasks.forEach(t=>{
+        taskRows.push([g.name,g.leader,'(공동)','-','-',t.type==='agent'?'AI Agent·RAG':'LLM 활용',t.name||'',t.status||'미시작',t.progress||0,t.content||'',t.plan||'',t.note||'']);
+      });
+    }
     g.members.forEach(m=>{
       if(!m.tasks||!m.tasks.length){
         taskRows.push([g.name,g.leader,m.name,m.rank,m.dept.replace(/_MD|_MX|_MG|_RP/g,''),'','','미시작',0,'','','']);
       } else {
         m.tasks.forEach(t=>{
-          taskRows.push([
-            g.name, g.leader, m.name, m.rank,
-            m.dept.replace(/_MD|_MX|_MG|_RP/g,''),
-            t.type==='agent'?'AI Agent·RAG':'LLM 활용',
-            t.name||'',
-            t.status||'미시작',
-            t.progress||0,
-            t.content||'',
-            t.plan||'',
-            t.note||''
-          ]);
+          taskRows.push([g.name,g.leader,m.name,m.rank,m.dept.replace(/_MD|_MX|_MG|_RP/g,''),t.type==='agent'?'AI Agent·RAG':'LLM 활용',t.name||'',t.status||'미시작',t.progress||0,t.content||'',t.plan||'',t.note||'']);
         });
       }
     });
   });
   const ws1 = XLSX.utils.aoa_to_sheet(taskRows);
-  // 컬럼 너비
   ws1['!cols']=[{wch:14},{wch:12},{wch:8},{wch:6},{wch:16},{wch:12},{wch:24},{wch:8},{wch:8},{wch:24},{wch:24},{wch:16}];
-  // 헤더 스타일
   XLSX.utils.book_append_sheet(wb, ws1, '과제현황');
 
-  /* ── 시트2: 그룹별 핵심과제 ── */
   const groupRows = [['그룹','대표','LLM 핵심과제명','LLM 과제 내용','LLM 평균진행률(%)','Agent 핵심과제명','Agent 과제 내용','Agent 평균진행률(%)']];
   window._G.forEach(g=>{
-    const llmTasks=g.members.flatMap(m=>(m.tasks||[]).filter(t=>t.type==='llm'));
-    const ragTasks=g.members.flatMap(m=>(m.tasks||[]).filter(t=>t.type==='agent'));
+    const allT=[...g.members.flatMap(m=>m.tasks||[]),...(g.jointTasks||[])];
+    const llmTasks=allT.filter(t=>t.type==='llm');
+    const ragTasks=allT.filter(t=>t.type==='agent');
     const llmAvg=llmTasks.length?Math.round(llmTasks.reduce((s,t)=>s+(t.progress||0),0)/llmTasks.length):0;
     const ragAvg=ragTasks.length?Math.round(ragTasks.reduce((s,t)=>s+(t.progress||0),0)/ragTasks.length):0;
-    groupRows.push([
-      g.name, g.leader,
-      g.keyTask_llm||'', g.tasks.llm||'', llmAvg,
-      g.keyTask_rag||'', g.tasks.rag||'', ragAvg
-    ]);
+    groupRows.push([g.name,g.leader,g.keyTask_llm||'',g.tasks.llm||'',llmAvg,g.keyTask_rag||'',g.tasks.rag||'',ragAvg]);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(groupRows);
   ws2['!cols']=[{wch:16},{wch:12},{wch:20},{wch:30},{wch:12},{wch:20},{wch:30},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws2, '그룹별핵심과제');
 
-  /* ── 시트3: 주간 회의록 ── */
   const meetRows = [['날짜','제목','주요 내용','결정 사항']];
   (window._meetings||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(m=>{
     meetRows.push([m.date, m.title||'주간 회의', m.body||'', m.dec||'']);
@@ -1193,7 +1089,6 @@ function downloadExcel(){
   ws3['!cols']=[{wch:12},{wch:20},{wch:50},{wch:30}];
   XLSX.utils.book_append_sheet(wb, ws3, '주간회의록');
 
-  /* ── 시트4: 교육 일정 ── */
   const eduRows = [['No','과정명','일정','대상','교육방식','시간','필수여부']];
   (window._eduRows||[]).forEach((r,i)=>{
     eduRows.push([i+1, r.name, r.schedule, r.target, r.method, r.hours, r.req]);
@@ -1202,7 +1097,6 @@ function downloadExcel(){
   ws4['!cols']=[{wch:4},{wch:22},{wch:22},{wch:18},{wch:14},{wch:10},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws4, '교육일정');
 
-  /* ── 다운로드 ── */
   XLSX.writeFile(wb, `AX_Champion_현황_${dateStr}.xlsx`);
 }
 window.downloadExcel=downloadExcel;
