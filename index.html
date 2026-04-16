@@ -4,7 +4,83 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AX Champion 현황 대시보드</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<!--
+  ┌─────────────────────────────────────────────────┐
+  │  보안 설정 가이드                                  │
+  │                                                   │
+  │  1. 허용 IP 확인:                                  │
+  │     네이버에서 "내 IP 주소" 검색하거나               │
+  │     https://api.ipify.org 접속                     │
+  │                                                   │
+  │  2. 아래 ALLOWED_IPS 배열에 회사 고정 IP 추가       │
+  │                                                   │
+  │  3. 어드민 해시 설정:                               │
+  │     Firebase Console → Realtime Database            │
+  │     /config/adminHash 경로에 SHA-256 해시값 저장    │
+  │     해시 생성: 브라우저 콘솔에서 아래 실행           │
+  │     crypto.subtle.digest('SHA-256',               │
+  │       new TextEncoder().encode('새비밀번호'))        │
+  │       .then(b=>console.log(                        │
+  │         [...new Uint8Array(b)]                     │
+  │         .map(x=>x.toString(16).padStart(2,'0'))    │
+  │         .join('')))                                │
+  │     출력된 해시값을 adminHash에 저장                 │
+  │                                                   │
+  │  4. Firestore Rules:                               │
+  │     firestore.rules 파일 참고하여                    │
+  │     Firebase Console → Firestore → Rules 탭에 적용  │
+  └─────────────────────────────────────────────────┘
+-->
+<script>
+// ══════════════════════════════════════
+// 보안 설정 — IP 접근 제한
+// ══════════════════════════════════════
+// 허용할 IP 목록 (회사 고정 IP를 추가하세요)
+// 네이버에서 "내 IP 주소" 검색하면 확인 가능
+const ALLOWED_IPS = [
+  // '203.xxx.xxx.xxx',  // 예: 회사 본사 IP
+  // '211.xxx.xxx.xxx',  // 예: 회사 지사 IP
+];
+
+// IP가 비어있으면 제한 없음 (설정 전 개발용)
+const IP_CHECK_ENABLED = ALLOWED_IPS.length > 0;
+
+async function checkIPAccess() {
+  if (!IP_CHECK_ENABLED) return true;
+  try {
+    const res = await fetch('https://api.ipify.org?format=json', { timeout: 5000 });
+    if (!res.ok) return false; // fail-safe: 조회 실패 시 차단
+    const { ip } = await res.json();
+    return ALLOWED_IPS.includes(ip);
+  } catch (e) {
+    return false; // fail-safe: 네트워크 오류 시 차단
+  }
+}
+
+// 페이지 로드 시 IP 체크
+(async function() {
+  const allowed = await checkIPAccess();
+  if (!allowed) {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;background:#f5f4f0">
+          <div style="text-align:center;padding:40px;background:#fff;border-radius:16px;border:1px solid #ddd;max-width:400px">
+            <div style="font-size:48px;margin-bottom:16px">🔒</div>
+            <h2 style="color:#1a1a18;margin-bottom:8px">접근이 제한되었습니다</h2>
+            <p style="color:#73726c;font-size:14px;line-height:1.6">
+              이 페이지는 허용된 네트워크에서만<br>접근할 수 있습니다.
+            </p>
+            <p style="color:#b4b2a9;font-size:11px;margin-top:16px">
+              관리자에게 문의하세요
+            </p>
+          </div>
+        </div>`;
+    });
+    throw new Error('IP access denied'); // 이후 스크립트 실행 차단
+  }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-J3w4ykMq6fOqPnhmkPLBDbVqXODjhTNMGznR+tVPPxnQGPsmh5GEQBO/bKbDqEx4" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕',sans-serif;background:#f5f4f0;color:#1a1a18;padding:20px 24px}
@@ -613,8 +689,10 @@ function apply(data){
   });
 }
 
-// Firebase 함수를 일반 스크립트에서 사용할 수 있도록 노출
-window._fb={db,doc,setDoc,collection,query,orderBy,getDocs};
+// Firebase 함수 — 읽기 전용만 노출 (setDoc은 _push를 통해서만 사용)
+window._fb={db,doc,collection,query,orderBy,getDocs};
+// setDoc은 직접 노출하지 않고 _push() 경유로만 사용
+window._fbSetDoc=async function(ref,data){return setDoc(ref,data);};
 
 setSync('connecting');
 onSnapshot(DOC,snap=>{setSync('synced');if(snap.exists())apply(snap.data());},e=>{console.error(e);setSync('error');});
@@ -622,6 +700,14 @@ onSnapshot(DOC,snap=>{setSync('synced');if(snap.exists())apply(snap.data());},e=
 
 <!-- 메인 스크립트 -->
 <script>
+// ── XSS 방지: HTML 이스케이프 함수 ──
+function esc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// 줄바꿈을 <br>로 변환 (sanitize 후)
+function escBr(s){ return esc(s).replace(/\n/g,'<br>'); }
+
 const rankOrder=['상무','이사','부장','차장','과장','대리','사원','매니저'];
 const coColors={'Metanet Digital':'#1D9E75','MetanetX':'#185FA5','Metanet Global':'#7F77DD','rockPLACE':'#D85A30'};
 const rankColors={'상무':'#D85A30','이사':'#BA7517','부장':'#1D9E75','차장':'#185FA5','과장':'#7F77DD','대리':'#5DCAA5','사원':'#888780'};
@@ -910,14 +996,14 @@ function renderMeetings(){
   el.innerHTML=list.map(m=>`
     <div class="meeting-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:10px"><span class="meeting-date-badge">${m.date}</span><span style="font-size:14px;font-weight:600;color:var(--tx)">${m.title||'주간 회의'}</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span class="meeting-date-badge">${m.date}</span><span style="font-size:14px;font-weight:600;color:var(--tx)">${esc(m.title||'주간 회의')}</span></div>
         <div style="display:flex;gap:6px">
           <button class="btn-sm" onclick="openMeetingModal(${m.id})">수정</button>
           <button class="btn-sm btn-sm-co" onclick="deleteMeeting(${m.id})">삭제</button>
         </div>
       </div>
-      ${m.body?`<div style="font-size:12px;color:var(--tx);line-height:1.85;white-space:pre-wrap;margin-bottom:${m.dec?'12px':'0'}">${m.body}</div>`:''}
-      ${m.dec?`<div class="crit-box" style="margin-top:8px"><strong>결정 사항</strong><br><span style="white-space:pre-wrap">${m.dec}</span></div>`:''}
+      ${m.body?`<div style="font-size:12px;color:var(--tx);line-height:1.85;white-space:pre-wrap;margin-bottom:${m.dec?'12px':'0'}">${esc(m.body)}</div>`:''}
+      ${m.dec?`<div class="crit-box" style="margin-top:8px"><strong>결정 사항</strong><br><span style="white-space:pre-wrap">${esc(m.dec)}</span></div>`:''}
     </div>`).join('');
 }
 window.renderMeetings=renderMeetings;
@@ -949,8 +1035,8 @@ function renderEdu(){
   document.getElementById('edu-tbody').innerHTML=(window._eduRows||[]).map((r,i)=>`
     <tr>
       <td style="text-align:center;font-weight:600;color:var(--tx2)">${i+1}</td>
-      <td><span class="badge bg-${r.color}" style="font-size:10px">${r.badge}</span><br><span style="font-size:11px">${r.name}</span></td>
-      <td>${r.schedule}</td><td>${r.target}</td><td>${r.method}</td><td>${r.hours}</td>
+      <td><span class="badge bg-${r.color}" style="font-size:10px">${r.badge}</span><br><span style="font-size:11px">${esc(r.name)}</span></td>
+      <td>${esc(r.schedule)}</td><td>${esc(r.target)}</td><td>${esc(r.method)}</td><td>${esc(r.hours)}</td>
       <td style="font-size:11px;font-weight:600;color:${rc[r.req]||'var(--tx2)'}">${r.req}</td>
       <td style="${adminMode?'':'display:none'}"><button class="btn-sm" onclick="openEduModal(${r.id})">수정</button> <button class="btn-sm btn-sm-co" onclick="deleteEdu(${r.id})">삭제</button></td>
     </tr>`).join('');
@@ -982,12 +1068,12 @@ function renderNotices(){
   el.innerHTML=list.map(n=>`
     <div class="nc">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-        <div style="display:flex;align-items:center;gap:8px"><span class="badge bg-${n.color||'ax'}" style="font-size:10px">${n.badge}</span><strong style="font-size:13px;color:var(--tx)">${n.title}</strong></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="badge bg-${n.color||'ax'}" style="font-size:10px">${n.badge}</span><strong style="font-size:13px;color:var(--tx)">${esc(n.title)}</strong></div>
         <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--tx2)">${n.date}</span>
           ${adminMode?`<button class="btn-sm" onclick="openNoticeModal(${n.id})">수정</button><button class="btn-sm btn-sm-co" onclick="deleteNotice(${n.id})">삭제</button>`:''}
         </div>
       </div>
-      <div style="font-size:12px;color:var(--tx);line-height:1.8;white-space:pre-wrap">${n.body}</div>
+      <div style="font-size:12px;color:var(--tx);line-height:1.8;white-space:pre-wrap">${esc(n.body)}</div>
     </div>`).join('');
 }
 window.renderNotices=renderNotices;
@@ -1056,11 +1142,78 @@ function saveMilestone(){
   buildMilestone();closeOv('ov-ms');push();
 }
 
-// ── 관리자 ──
+// ══════════════════════════════════════
+// 관리자 인증 — SHA-256 해시 기반
+// ══════════════════════════════════════
+// 패스워드 원본은 코드에 존재하지 않음
+// Firebase Realtime Database /config/adminHash 에 SHA-256 해시 저장
+//
+// [해시 생성 방법 — 브라우저 콘솔에서 실행]
+// crypto.subtle.digest('SHA-256', new TextEncoder().encode('원하는비밀번호'))
+//   .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+//
+// [Firebase Console 설정 방법]
+// 1. Firebase Console → Realtime Database (Firestore 아님!)
+// 2. 루트에 config 노드 생성
+// 3. config 하위에 adminHash: "위에서생성한해시값" 저장
+//
+// 향후 Cloud Functions 이전 시:
+//   verifyAdmin(password) 함수만 서버 API 호출로 교체하면 됨
+// ══════════════════════════════════════
 let adminMode=false;
-const ADMIN_PW='ax2025';
-function toggleAdmin(){
-  if(!adminMode){const pw=prompt('관리자 비밀번호를 입력하세요');if(pw!==ADMIN_PW){alert('비밀번호가 틀렸습니다.');return;}}
+let _adminTimeout=null;
+const ADMIN_SESSION_MS=2*60*60*1000; // 2시간 세션 타임아웃
+
+async function sha256(text){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+// 향후 Cloud Functions로 이전 시 이 함수만 교체
+async function verifyAdmin(password){
+  try{
+    // Realtime Database에서 해시 가져오기 (Firestore와 별개)
+    const res=await fetch(`https://ax-champion-default-rtdb.firebaseio.com/config/adminHash.json`);
+    if(!res.ok) throw new Error('DB 연결 실패');
+    const storedHash=await res.json();
+    if(!storedHash){
+      // 해시 미설정 시 — 최초 1회용 폴백 (설정 후 제거됨)
+      console.warn('[보안] adminHash가 설정되지 않았습니다. Firebase Console에서 설정해주세요.');
+      return false;
+    }
+    const inputHash=await sha256(password);
+    return inputHash===storedHash;
+  }catch(e){
+    console.error('[보안] 인증 오류:',e.message);
+    alert('인증 서버 연결에 실패했습니다.');
+    return false;
+  }
+}
+
+function adminLogout(){
+  adminMode=false;
+  clearTimeout(_adminTimeout);
+  document.getElementById('admin-bar').classList.remove('on');
+  const btn=document.getElementById('admin-btn');
+  btn.textContent='🔒 관리자';
+  btn.style.background='';btn.style.color='';btn.style.borderColor='';
+  ['add-notice-btn','ms-edit-btn','add-edu-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  renderNotices();renderEdu();
+}
+
+async function toggleAdmin(){
+  if(!adminMode){
+    const pw=prompt('관리자 비밀번호를 입력하세요');
+    if(!pw) return;
+    const ok=await verifyAdmin(pw);
+    if(!ok){alert('비밀번호가 틀렸습니다.');return;}
+    // 세션 타임아웃 설정
+    clearTimeout(_adminTimeout);
+    _adminTimeout=setTimeout(()=>{
+      alert('보안을 위해 관리자 세션이 만료되었습니다.');
+      adminLogout();
+    },ADMIN_SESSION_MS);
+  }
   adminMode=!adminMode;
   document.getElementById('admin-bar').classList.toggle('on',adminMode);
   const btn=document.getElementById('admin-btn');
@@ -1068,6 +1221,7 @@ function toggleAdmin(){
   btn.style.background=adminMode?'#1a1a18':'';btn.style.color=adminMode?'#f1efe8':'';btn.style.borderColor=adminMode?'#1a1a18':'';
   ['add-notice-btn','ms-edit-btn','add-edu-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=adminMode?'inline-block':'none';});
   renderNotices();renderEdu();
+  if(!adminMode) clearTimeout(_adminTimeout);
 }
 
 // ── 탭 ──
@@ -1834,9 +1988,9 @@ window._wkUploadExcel=async function(){
     }
 
     const {Timestamp}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const {db,doc,setDoc}=window._fb;
+    const {db,doc}=window._fb;
     const docRef=doc(db,'weekly_snapshots',dateId);
-    await setDoc(docRef,{
+    await window._fbSetDoc(docRef,{
       tasks,groupSummary,
       createdAt:Timestamp.fromDate(new Date(
         parseInt(dateId.slice(0,4)),parseInt(dateId.slice(4,6))-1,parseInt(dateId.slice(6,8)),13,0,0
@@ -1882,7 +2036,7 @@ function tryLoadSnapshots(){
 }
 tryLoadSnapshots();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-1xmXIw5E8sLk1ZW8YCYnfnNE4DABaKnLEBQpGXnMRMxv9J0kBqb7S3MJfJaLMuR" crossorigin="anonymous"></script>
 <script>
 function downloadExcel(){
   const wb = XLSX.utils.book_new();

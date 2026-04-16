@@ -1,0 +1,64 @@
+// ══════════════════════════════════════════════════════════
+// AX Champion 대시보드 — Firestore Security Rules
+// ══════════════════════════════════════════════════════════
+//
+// [적용 방법]
+// 1. Firebase Console (https://console.firebase.google.com) 접속
+// 2. 프로젝트 "ax-champion" 선택
+// 3. 좌측 메뉴 → Firestore Database → Rules 탭
+// 4. 아래 규칙을 복사하여 붙여넣기
+// 5. "게시" 버튼 클릭
+//
+// [규칙 설명]
+// - 읽기: 모든 사용자 허용 (공개 대시보드)
+// - 쓰기: 허용하되 삭제는 차단, 데이터 타입 검증
+// - /config/** 경로: 완전 차단 (관리자 해시 등 설정)
+// ══════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── /config/** : 완전 차단 (Firebase Console에서만 관리) ──
+    match /config/{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── /dashboard/main : 메인 대시보드 데이터 ──
+    match /dashboard/main {
+      // 읽기: 누구나 가능
+      allow read: if true;
+
+      // 쓰기: 허용하되 조건부
+      allow create: if true;
+      allow update: if
+        // 삭제 방지: 기존 문서만 업데이트 가능
+        request.resource.data.keys().hasAll(['groups', 'updatedAt'])
+        // updatedAt은 문자열이어야 함
+        && request.resource.data.updatedAt is string;
+
+      // 삭제: 차단
+      allow delete: if false;
+    }
+
+    // ── /weekly_snapshots/{docId} : 주간 스냅샷 ──
+    match /weekly_snapshots/{docId} {
+      // 읽기: 누구나 가능
+      allow read: if true;
+
+      // 쓰기: 허용하되 타입 검증
+      allow create, update: if
+        request.resource.data.keys().hasAll(['tasks', 'groupSummary', 'createdAt'])
+        && request.resource.data.tasks is list
+        && request.resource.data.groupSummary is list;
+
+      // 삭제: 차단
+      allow delete: if false;
+    }
+
+    // ── 그 외 모든 경로: 차단 ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
