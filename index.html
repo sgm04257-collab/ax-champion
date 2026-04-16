@@ -366,14 +366,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 <!-- ══ TAB: 주간 현황 ══ -->
 <div id="view-weekly" class="view">
 
-  <!-- ── 해당 주 주간현황 보기 ── -->
+  <!-- ── 이번 주 실시간 현황 ── -->
   <div class="wk-section">
     <div class="wk-toolbar">
-      <label style="font-size:13px;font-weight:700;color:var(--tx)">📋 해당 주 주간현황 보기</label>
-      <select id="wk-sel-single" onchange="window._wkSingle()"></select>
+      <label style="font-size:13px;font-weight:700;color:var(--tx)">📋 이번 주 실시간 과제현황</label>
       <span class="wk-ts" id="wk-timestamp"></span>
     </div>
-    <!-- 단독 KPI -->
+    <!-- 실시간 KPI -->
     <div class="wk-kpi" id="wk-single-kpi">
       <div class="kc"><div class="kc-label">총 과제 수</div><div class="kc-val" id="wks-total">-</div></div>
       <div class="kc"><div class="kc-label">진행중</div><div class="kc-val" id="wks-prog">-</div></div>
@@ -544,7 +543,7 @@ function apply(data){
   if(data.msRows)   window._msRows   = data.msRows;
   if(data.eduRows)  window._eduRows  = data.eduRows;
   if(data.meetings) window._meetings = data.meetings;
-  ['renderTask','buildOverviewGroups','buildMilestone','renderNotices','renderEdu','renderMeetings','updateProg'].forEach(fn=>{
+  ['renderTask','buildOverviewGroups','buildMilestone','renderNotices','renderEdu','renderMeetings','updateProg','renderLiveWeek'].forEach(fn=>{
     if(typeof window[fn]==='function')window[fn]();
   });
 }
@@ -1151,6 +1150,7 @@ window.newTaskId=newTaskId;
 window.push=push;
 window.summarizeGroupTasks=summarizeGroupTasks;
 window.buildOverviewGroups=buildOverviewGroups;
+window.renderLiveWeek=function(){};  // placeholder until defined below
 
 // ── 날짜/주차 ──
 function initToday(){
@@ -1201,65 +1201,107 @@ function wkDelta(el,val,suffix,invert){
   el.className='kc-delta '+(good?'wk-up':'wk-down');
 }
 
-// ── 해당 주 단독 현황 보기 ──
-function renderSingleWeek(){
-  const idx=Number(document.getElementById('wk-sel-single').value);
-  const snap=_wkAll[idx];
-  if(!snap) return;
-  const st=wkStats(snap);
-  document.getElementById('wks-total').textContent=st.total+'건';
-  document.getElementById('wks-prog').textContent=st.prog+'건';
-  document.getElementById('wks-done').textContent=st.done+'건';
-  document.getElementById('wks-notyet').textContent=st.notyet+'건';
-  document.getElementById('wks-avg').textContent=st.avg+'%';
+// ── 이번 주 실시간 현황 (대시보드 _G 데이터 기반) ──
+function renderLiveWeek(){
+  const G=window._G||[];
+  // 전체 과제 수집
+  let allTasks=[];
+  G.forEach(g=>{
+    // 공동과제
+    if(g.joint&&g.jointTasks){
+      g.jointTasks.forEach(t=>{
+        allTasks.push({group:g.name,name:'(공동)',taskName:t.name||'',taskType:t.type||'',
+          status:t.status||'',progress:Number(t.progress)||0,dept:''});
+      });
+    }
+    // 개인과제
+    (g.members||[]).forEach(m=>{
+      (m.tasks||[]).forEach(t=>{
+        allTasks.push({group:g.name,name:m.name||'',taskName:t.name||'',taskType:t.type||'',
+          status:t.status||'',progress:Number(t.progress)||0,dept:m.dept||''});
+      });
+    });
+  });
+
+  // KPI 계산
+  const total=allTasks.length;
+  let prog=0,notyet=0,done=0,sumP=0;
+  allTasks.forEach(t=>{
+    const s=(t.status||'').trim();
+    const p=t.progress;
+    sumP+=p;
+    if(s==='완료'||p>=100) done++;
+    else if(s==='미시작'||p===0) notyet++;
+    else prog++;
+  });
+  const avg=total?Math.round(sumP/total):0;
+
+  document.getElementById('wks-total').textContent=total+'건';
+  document.getElementById('wks-prog').textContent=prog+'건';
+  document.getElementById('wks-done').textContent=done+'건';
+  document.getElementById('wks-notyet').textContent=notyet+'건';
+  document.getElementById('wks-avg').textContent=avg+'%';
 
   // 그룹별 핵심과제 테이블
-  const gs=snap.groupSummary||[];
   let thtml='';
-  gs.forEach(g=>{
-    const lp=Number(g.llmProgress)||0, ap=Number(g.agentProgress)||0;
+  G.forEach(g=>{
+    const llmName=g.keyTask_llm||g.tasks?.llm||'-';
+    const ragName=g.keyTask_rag||g.tasks?.rag||'-';
+    // 그룹 내 LLM/Agent 평균 진행률 계산
+    let llmTasks=[],agtTasks=[];
+    const addTask=(t)=>{
+      const tp=(t.type||'').toLowerCase();
+      if(tp.includes('agent')||tp.includes('rag')) agtTasks.push(Number(t.progress)||0);
+      else llmTasks.push(Number(t.progress)||0);
+    };
+    if(g.joint&&g.jointTasks) g.jointTasks.forEach(addTask);
+    (g.members||[]).forEach(m=>(m.tasks||[]).forEach(addTask));
+    const llmAvg=llmTasks.length?Math.round(llmTasks.reduce((a,b)=>a+b,0)/llmTasks.length):0;
+    const agtAvg=agtTasks.length?Math.round(agtTasks.reduce((a,b)=>a+b,0)/agtTasks.length):0;
     thtml+=`<tr>
-      <td style="font-weight:600">${g.group}</td>
-      <td style="font-size:11px">${g.llmTaskName||'-'}</td>
-      <td><div class="prog-bar"><div class="prog-fill" style="width:${lp}%"></div></div>${lp}%</td>
-      <td style="font-size:11px">${g.agentTaskName||'-'}</td>
-      <td><div class="prog-bar"><div class="prog-fill" style="width:${ap}%;background:var(--pu)"></div></div>${ap}%</td>
+      <td style="font-weight:600">${g.name}</td>
+      <td style="font-size:11px">${llmName}</td>
+      <td><div class="prog-bar"><div class="prog-fill" style="width:${llmAvg}%"></div></div>${llmAvg}%</td>
+      <td style="font-size:11px">${ragName}</td>
+      <td><div class="prog-bar"><div class="prog-fill" style="width:${agtAvg}%;background:var(--pu)"></div></div>${agtAvg}%</td>
     </tr>`;
   });
   document.getElementById('wks-group-tbody').innerHTML=thtml;
 
-  // 개인별 과제 목록 (그룹별 접기)
-  const tasks=snap.tasks||[];
-  const groups=new Map();
-  tasks.forEach(t=>{
-    const g=t.group||'기타';
-    if(!groups.has(g)) groups.set(g,[]);
-    groups.get(g).push(t);
-  });
+  // 개인별 과제 목록 (그룹별 펼침)
   let lhtml='';
-  groups.forEach((members,gName)=>{
-    const gSt=members.reduce((a,t)=>a+(Number(t.progress)||0),0);
-    const gAvg=members.length?Math.round(gSt/members.length):0;
+  G.forEach(g=>{
+    let groupTasks=[];
+    if(g.joint&&g.jointTasks){
+      g.jointTasks.forEach(t=>groupTasks.push({name:'(공동)',taskName:t.name||'',taskType:t.type||'',
+        status:t.status||'',progress:Number(t.progress)||0,dept:''}));
+    }
+    (g.members||[]).forEach(m=>{
+      (m.tasks||[]).forEach(t=>groupTasks.push({name:m.name||'',taskName:t.name||'',taskType:t.type||'',
+        status:t.status||'',progress:Number(t.progress)||0,dept:m.dept||''}));
+    });
+    if(!groupTasks.length) return;
+    const gAvg=Math.round(groupTasks.reduce((a,t)=>a+t.progress,0)/groupTasks.length);
     lhtml+=`<div class="wk-task-group">
       <div class="wk-task-group-hd" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <span style="font-size:10px;transition:transform .2s">▶</span>
-        <span>${gName}</span>
-        <span style="font-size:11px;color:var(--tx3);margin-left:auto">${members.length}건 · 평균 ${gAvg}%</span>
+        <span style="font-size:10px">▶</span>
+        <span>${g.name}</span>
+        <span style="font-size:11px;color:var(--tx3);margin-left:auto">${groupTasks.length}건 · 평균 ${gAvg}%</span>
       </div>
       <div class="wk-task-group-body">`;
-    members.forEach(t=>{
-      const p=Number(t.progress)||0;
+    groupTasks.forEach(t=>{
+      const p=t.progress;
       const s=(t.status||'').trim();
       const stCls=s==='완료'||p>=100?'wk-st-done':s==='미시작'||p===0?'wk-st-not':'wk-st-prog';
       const stTxt=s==='완료'||p>=100?'완료':s==='미시작'||p===0?'미시작':'진행중';
       const typeCls=(t.taskType||'').includes('Agent')||(t.taskType||'').includes('RAG')?'wk-tag-agent':'wk-tag-llm';
       const typeTxt=(t.taskType||'').includes('Agent')||(t.taskType||'').includes('RAG')?'Agent':'LLM';
       lhtml+=`<div class="wk-task-row">
-        <span style="font-weight:600">${t.name||''}</span>
-        <span>${t.taskName||''} <span class="wk-tag ${typeCls}">${typeTxt}</span></span>
+        <span style="font-weight:600">${t.name}</span>
+        <span>${t.taskName} <span class="wk-tag ${typeCls}">${typeTxt}</span></span>
         <span class="wk-status-badge ${stCls}">${stTxt}</span>
         <span style="font-weight:600;color:var(--ax)">${p}%</span>
-        <span style="color:var(--tx3)">${t.dept||''}</span>
+        <span style="color:var(--tx3)">${t.dept}</span>
       </div>`;
     });
     lhtml+=`</div></div>`;
@@ -1416,13 +1458,11 @@ async function loadSnapshots(){
     _wkAll=[];
     snap.forEach(d=>{_wkAll.push({id:d.id,...d.data()});});
 
-    const selSingle=document.getElementById('wk-sel-single');
     const selThis=document.getElementById('wk-sel-this');
     const selLast=document.getElementById('wk-sel-last');
-    selSingle.innerHTML='';selThis.innerHTML='';selLast.innerHTML='';
+    selThis.innerHTML='';selLast.innerHTML='';
 
     if(_wkAll.length===0){
-      selSingle.innerHTML='<option>데이터 없음</option>';
       selThis.innerHTML='<option>데이터 없음</option>';
       selLast.innerHTML='<option>데이터 없음</option>';
       document.getElementById('wk-insight-body').innerHTML='<div class="wk-empty">아직 주간 스냅샷 데이터가 없습니다.<br>관리자 모드에서 엑셀 파일을 업로드하거나 Firestore에 직접 데이터를 추가하세요.</div>';
@@ -1431,15 +1471,12 @@ async function loadSnapshots(){
 
     _wkAll.forEach((s,i)=>{
       const lbl=wkLabel(s.id);
-      selSingle.innerHTML+=`<option value="${i}">${lbl}</option>`;
       selThis.innerHTML+=`<option value="${i}">${lbl}</option>`;
       selLast.innerHTML+=`<option value="${i}">${lbl}</option>`;
     });
-    selSingle.value='0';
     selThis.value='0';
     selLast.value=_wkAll.length>1?'1':'0';
 
-    renderSingleWeek();
     renderWeekly();
     updateTimestamp();
   }catch(e){
@@ -1465,7 +1502,7 @@ function updateTimestamp(){
     `마지막 업데이트: ${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${dn[d.getDay()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
-window._wkSingle=renderSingleWeek;
+window.renderLiveWeek=renderLiveWeek;
 window._wkCompare=renderWeekly;
 window._wkCopy=function(){
   if(!_wkInsightText){alert('복사할 인사이트가 없습니다.');return;}
@@ -1564,7 +1601,7 @@ function setupAutoRefresh(){
 }
 
 // ── 부트 ──
-initToday();renderTask();buildMilestone();renderNotices();renderEdu();renderMeetings();buildOverviewGroups();
+initToday();renderTask();buildMilestone();renderNotices();renderEdu();renderMeetings();buildOverviewGroups();renderLiveWeek();
 loadSnapshots();setupAutoRefresh();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
