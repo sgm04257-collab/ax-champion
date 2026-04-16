@@ -556,7 +556,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 
     <!-- 차트 (접기) -->
     <div style="margin-top:16px">
-      <div class="wk-detail-toggle" onclick="const b=document.getElementById('wk-charts-body'),a=this.querySelector('.wk-arr');const o=b.style.display==='none';b.style.display=o?'block':'none';a.style.transform=o?'rotate(90deg)':'rotate(0)'">
+      <div class="wk-detail-toggle" onclick="const b=document.getElementById('wk-charts-body'),a=this.querySelector('.wk-arr');const o=b.style.display==='none';b.style.display=o?'block':'none';a.style.transform=o?'rotate(90deg)':'rotate(0)';if(o&&window._wkAll&&window._wkAll.length)window.renderCharts(window._wkAll);">
         <span class="wk-arr" style="font-size:12px;transition:transform .2s;display:inline-block">▶</span>
         <span style="font-size:13px;font-weight:600">📉 추이 차트 보기</span>
       </div>
@@ -1389,7 +1389,8 @@ function initToday(){
 // ══════════════════════════════════════
 // ── 주간 현황 패널 ──
 // ══════════════════════════════════════
-let _wkAll=[], _wkCharts=[null,null,null,null], _wkInsightText='';
+let _wkCharts=[null,null,null,null], _wkInsightText='';
+window._wkAll=[];
 const WK_BASE=new Date('2026-03-27');
 const GRP_COLORS=['#1D9E75','#7F77DD','#BA7517','#D85A30','#185FA5','#6B8E23','#C04078','#2196F3','#FF9800'];
 
@@ -1700,27 +1701,27 @@ async function loadSnapshots(){
     const ref=collection(db,'weekly_snapshots');
     const q=query(ref,orderBy('createdAt','desc'));
     const snap=await getDocs(q);
-    _wkAll=[];
-    snap.forEach(d=>{_wkAll.push({id:d.id,...d.data()});});
+    window._wkAll=[];
+    snap.forEach(d=>{window._wkAll.push({id:d.id,...d.data()});});
 
     const selThis=document.getElementById('wk-sel-this');
     const selLast=document.getElementById('wk-sel-last');
     selThis.innerHTML='';selLast.innerHTML='';
 
-    if(_wkAll.length===0){
+    if(window._wkAll.length===0){
       selThis.innerHTML='<option>데이터 없음</option>';
       selLast.innerHTML='<option>데이터 없음</option>';
       document.getElementById('wk-insight-body').innerHTML='<div class="wk-empty">아직 주간 스냅샷 데이터가 없습니다.<br>관리자 모드에서 엑셀 파일을 업로드하거나 Firestore에 직접 데이터를 추가하세요.</div>';
       return;
     }
 
-    _wkAll.forEach((s,i)=>{
+    window._wkAll.forEach((s,i)=>{
       const lbl=wkLabel(s.id);
       selThis.innerHTML+=`<option value="${i}">${lbl}</option>`;
       selLast.innerHTML+=`<option value="${i}">${lbl}</option>`;
     });
     selThis.value='0';
-    selLast.value=_wkAll.length>1?'1':'0';
+    selLast.value=window._wkAll.length>1?'1':'0';
 
     renderWeekly();
     updateTimestamp();
@@ -1733,11 +1734,14 @@ async function loadSnapshots(){
 function renderWeekly(){
   const ti=Number(document.getElementById('wk-sel-this').value);
   const li=Number(document.getElementById('wk-sel-last').value);
-  const tw=_wkAll[ti],lw=_wkAll[li];
+  const tw=window._wkAll[ti],lw=window._wkAll[li];
   if(!tw) return;
   renderKPI(tw,lw);
-  renderCharts(_wkAll);
-  generateInsight(tw,lw,_wkAll);
+  generateInsight(tw,lw,window._wkAll);
+  // 차트는 펼쳐져 있을 때만 다시 그리기
+  if(document.getElementById('wk-charts-body')&&document.getElementById('wk-charts-body').style.display!=='none'){
+    renderCharts(window._wkAll);
+  }
 }
 
 function updateTimestamp(){
@@ -1748,6 +1752,7 @@ function updateTimestamp(){
 }
 
 window.renderLiveWeek=renderLiveWeek;
+window.renderCharts=renderCharts;
 
 // ── KPI 카드 클릭 필터 ──
 let _wkLiveTasks=[];
