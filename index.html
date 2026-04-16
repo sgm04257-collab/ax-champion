@@ -423,6 +423,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
     <div class="wk-toolbar">
       <label style="font-size:14px;font-weight:700;color:var(--tx)">📋 과제 진행현황</label>
       <button class="wk-copy-btn" onclick="window.renderLiveWeek();document.getElementById('wk-timestamp').textContent='업데이트: '+new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit'})">🔄 현황 업데이트</button>
+      <button class="wk-copy-btn" onclick="window._wkDownloadReport()" style="background:#eef5fc;border-color:#185FA5;color:#0a3a70">📥 보고용 엑셀 다운로드</button>
       <span class="wk-ts" id="wk-timestamp"></span>
     </div>
     <div class="wk-kpi-click" id="wk-single-kpi">
@@ -1699,6 +1700,89 @@ window._wkCopy=function(){
     btn.textContent='✅ 복사 완료!';
     setTimeout(()=>{btn.textContent='📋 인사이트 복사';},2000);
   });
+};
+
+// ── 보고용 엑셀 다운로드 ──
+window._wkDownloadReport=function(){
+  if(typeof XLSX==='undefined'){alert('엑셀 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');return;}
+  const G=window._G||[];
+  const wb=XLSX.utils.book_new();
+  const today=new Date();
+  const dateStr=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  const monthLabel=`${today.getMonth()+1}월`;
+
+  // 시트1: 그룹별 추진현황 (보고용 요약)
+  const s1Rows=[['구분','진행 중 과제 (LLM 활용)','진행률','진행 중 과제 (Agent RAG)','진행률',`${monthLabel} 주요추진내용(완료)`]];
+  G.forEach(g=>{
+    let llmTasks=[],agtTasks=[],doneList=[];
+    const addT=(t,who)=>{
+      const tp=(t.type||'').toLowerCase();
+      const p=Number(t.progress)||0;
+      const s=(t.status||'').trim();
+      const nm=t.name||'';
+      const item={name:nm,who,progress:p,status:s};
+      if(tp.includes('agent')||tp.includes('rag')) agtTasks.push(item);
+      else llmTasks.push(item);
+      if(s==='완료'||p>=100) doneList.push(`${nm}${who?' ('+who+')':''}`);
+    };
+    if(g.joint&&g.jointTasks) g.jointTasks.forEach(t=>addT(t,'공동'));
+    (g.members||[]).forEach(m=>(m.tasks||[]).forEach(t=>addT(t,m.name)));
+
+    const llmActive=llmTasks.filter(t=>t.progress>0&&t.progress<100&&t.status!=='완료');
+    const agtActive=agtTasks.filter(t=>t.progress>0&&t.progress<100&&t.status!=='완료');
+    const llmAvg=llmTasks.length?Math.round(llmTasks.reduce((s,t)=>s+t.progress,0)/llmTasks.length):0;
+    const agtAvg=agtTasks.length?Math.round(agtTasks.reduce((s,t)=>s+t.progress,0)/agtTasks.length):0;
+
+    const llmNames=llmActive.length?llmActive.map(t=>'· '+t.name).join('\n'):(llmTasks.length?'· '+llmTasks[0].name:'');
+    const agtNames=agtActive.length?agtActive.map(t=>'· '+t.name).join('\n'):(agtTasks.length?'· '+agtTasks[0].name:'');
+    const doneStr=doneList.length?doneList.map(d=>'· '+d).join('\n'):'';
+
+    s1Rows.push([g.name, llmNames, llmAvg+'%', agtNames, agtAvg+'%', doneStr]);
+  });
+  const ws1=XLSX.utils.aoa_to_sheet(s1Rows);
+  ws1['!cols']=[{wch:16},{wch:40},{wch:8},{wch:40},{wch:8},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,ws1,'그룹별 추진현황');
+
+  // 시트2: 전체 과제 상세
+  const s2Rows=[['그룹','이름','직급','소속팀','과제유형','과제명','상태','진행률(%)','달성내용','향후계획','비고']];
+  G.forEach(g=>{
+    if(g.joint&&g.jointTasks){
+      g.jointTasks.forEach(t=>{
+        s2Rows.push([g.name,'(공동과제)','','',
+          (t.type||'llm')==='agent'?'AI Agent·RAG':'LLM 활용',
+          t.name||'',t.status||'미시작',Number(t.progress)||0,
+          t.content||'',t.plan||'',t.note||'']);
+      });
+    }
+    (g.members||[]).forEach(m=>{
+      (m.tasks||[]).forEach(t=>{
+        s2Rows.push([g.name,m.name||'',m.rank||'',m.dept||'',
+          (t.type||'llm')==='agent'?'AI Agent·RAG':'LLM 활용',
+          t.name||'',t.status||'미시작',Number(t.progress)||0,
+          t.content||'',t.plan||'',t.note||'']);
+      });
+    });
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(s2Rows);
+  ws2['!cols']=[{wch:16},{wch:10},{wch:6},{wch:18},{wch:12},{wch:40},{wch:8},{wch:8},{wch:50},{wch:50},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws2,'전체 과제 상세');
+
+  // 시트3: 그룹별 핵심과제
+  const s3Rows=[['그룹','대표','LLM 핵심과제명','LLM 평균진행률(%)','Agent 핵심과제명','Agent 평균진행률(%)']];
+  G.forEach(g=>{
+    let llmP=[],agtP=[];
+    const addP=t=>{const tp=(t.type||'').toLowerCase();const p=Number(t.progress)||0;if(tp.includes('agent')||tp.includes('rag'))agtP.push(p);else llmP.push(p);};
+    if(g.joint&&g.jointTasks) g.jointTasks.forEach(addP);
+    (g.members||[]).forEach(m=>(m.tasks||[]).forEach(addP));
+    s3Rows.push([g.name,g.leader||'',
+      g.keyTask_llm||g.tasks?.llm||'',llmP.length?Math.round(llmP.reduce((a,b)=>a+b,0)/llmP.length):0,
+      g.keyTask_rag||g.tasks?.rag||'',agtP.length?Math.round(agtP.reduce((a,b)=>a+b,0)/agtP.length):0]);
+  });
+  const ws3=XLSX.utils.aoa_to_sheet(s3Rows);
+  ws3['!cols']=[{wch:16},{wch:12},{wch:40},{wch:14},{wch:40},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws3,'그룹별핵심과제');
+
+  XLSX.writeFile(wb,`AX_Champion_보고용_${dateStr}.xlsx`);
 };
 
 // ── 엑셀 업로드 (관리자 전용) ──
