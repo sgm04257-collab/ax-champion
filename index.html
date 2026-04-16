@@ -198,9 +198,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 
 /* 인사이트 카드 */
 .wk-ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.wk-ins-card{border-radius:14px;padding:18px 16px;border-left:5px solid}
-.wk-ins-card h4{font-size:14px;font-weight:700;margin-bottom:10px}
-.wk-ins-card ul{list-style:none;padding:0;font-size:12px;line-height:2}
+.wk-ins-card{border-radius:14px;padding:16px;border-left:5px solid;max-height:240px;overflow-y:auto}
+.wk-ins-card h4{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.wk-ins-card h4 .ins-cnt{font-weight:500;font-size:11px;opacity:.6}
+.wk-ins-card ul{list-style:none;padding:0;font-size:12px;line-height:1.8}
+.wk-ins-card ul li{padding:2px 0;border-bottom:0.5px solid rgba(0,0,0,.05)}
+.wk-ins-card ul li:last-child{border-bottom:none}
 .wk-ins-card.ins-green{background:#f0faf5;border-color:#1D9E75;color:#085041}
 .wk-ins-card.ins-blue{background:#eef5fc;border-color:#185FA5;color:#0a3a70}
 .wk-ins-card.ins-orange{background:#fef4e8;border-color:#D85A30;color:#7a2800}
@@ -440,15 +443,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 
   <!-- ═══ 2. 주차별 비교 분석 ═══ -->
   <div class="wk-section">
-    <div class="wk-toolbar">
-      <label style="font-size:14px;font-weight:700;color:var(--tx)">📊 주차별 비교 분석</label>
-      <select id="wk-sel-this" onchange="window._wkCompare()"></select>
-      <span style="font-size:12px;color:var(--tx3);font-weight:600">vs</span>
-      <select id="wk-sel-last" onchange="window._wkCompare()"></select>
-      <button class="wk-copy-btn" onclick="window._wkCopy()" style="margin-left:8px">📋 인사이트 복사</button>
+    <div style="margin-bottom:14px">
+      <div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:8px">📊 주차별 비교 분석</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px 14px">
+          <span style="font-size:11px;color:var(--ax);font-weight:600">이번 주</span>
+          <select id="wk-sel-this" onchange="window._wkCompare()"></select>
+        </div>
+        <span style="font-size:16px;color:var(--tx3);font-weight:700">→</span>
+        <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:6px 14px">
+          <span style="font-size:11px;color:var(--tx2);font-weight:600">지난 주</span>
+          <select id="wk-sel-last" onchange="window._wkCompare()"></select>
+        </div>
+        <button class="wk-copy-btn" onclick="window._wkCopy()">📋 인사이트 복사</button>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:6px">💡 왼쪽에 최신 주차, 오른쪽에 비교할 이전 주차를 선택하세요</div>
     </div>
 
-    <!-- 비교 KPI 카드 (큰 버전) -->
+    <!-- 비교 KPI 카드 -->
     <div class="wk-kpi-compare">
       <div class="kc-cmp"><div class="kc-icon">📊</div><div class="kc-label">총 과제 수</div><div class="kc-val" id="wk-total">-</div><div class="kc-delta" id="wk-d-total"></div></div>
       <div class="kc-cmp"><div class="kc-icon">🔵</div><div class="kc-label">진행중</div><div class="kc-val" id="wk-prog">-</div><div class="kc-delta" id="wk-d-prog"></div></div>
@@ -456,42 +468,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
       <div class="kc-cmp"><div class="kc-icon">📈</div><div class="kc-label">평균 진행률</div><div class="kc-val" id="wk-avg">-</div><div class="kc-delta" id="wk-d-avg"></div></div>
     </div>
 
-    <!-- 인사이트 카드 (발표용) -->
+    <!-- 인사이트 카드 -->
     <div id="wk-insight-cards" style="margin-top:16px"></div>
 
-    <!-- 차트 (보조) -->
-    <div class="wk-chart-grid" style="margin-top:20px">
-      <div class="cc"><h4>과제 상태 추이 (누적 막대)</h4><canvas id="wk-chart-status"></canvas></div>
-      <div class="cc"><h4>전체 평균 진행률 추이</h4><canvas id="wk-chart-avg"></canvas></div>
-      <div class="cc"><h4>그룹별 LLM 핵심과제 진행률</h4><canvas id="wk-chart-llm"></canvas></div>
-      <div class="cc"><h4>그룹별 Agent 핵심과제 진행률</h4><canvas id="wk-chart-agent"></canvas></div>
-    </div>
-
-    <!-- 숨겨진 텍스트 (복사용) -->
-    <div class="wk-insight" id="wk-insight" style="display:none">
-      <div id="wk-insight-body"></div>
-    </div>
-  </div>
-
-  <hr style="border:none;border-top:1.5px solid var(--bd);margin:28px 0">
-
-  <!-- ═══ 3. 세부 현황 (접기/펼치기) ═══ -->
-  <div class="wk-section">
-    <div class="wk-detail-toggle" onclick="const b=document.getElementById('wks-detail-body'),a=this.querySelector('.wk-arr');const o=b.style.display==='none';b.style.display=o?'block':'none';a.style.transform=o?'rotate(90deg)':'rotate(0)'">
-      <span class="wk-arr" style="font-size:12px;transition:transform .2s;display:inline-block">▶</span>
-      <span style="font-size:14px;font-weight:700">📂 세부 현황</span>
-      <span style="font-size:11px;color:var(--tx3);margin-left:8px">그룹별 핵심과제 진행률 · 개인별 과제 목록</span>
-    </div>
-    <div id="wks-detail-body" style="display:none;margin-top:12px">
-      <div class="wk-group-table-wrap">
-        <table class="wk-group-table" id="wks-group-table">
-          <thead><tr><th>그룹</th><th>LLM 핵심과제</th><th>LLM 진행률</th><th>Agent 핵심과제</th><th>Agent 진행률</th></tr></thead>
-          <tbody id="wks-group-tbody"></tbody>
-        </table>
+    <!-- 차트 (접기) -->
+    <div style="margin-top:16px">
+      <div class="wk-detail-toggle" onclick="const b=document.getElementById('wk-charts-body'),a=this.querySelector('.wk-arr');const o=b.style.display==='none';b.style.display=o?'block':'none';a.style.transform=o?'rotate(90deg)':'rotate(0)'">
+        <span class="wk-arr" style="font-size:12px;transition:transform .2s;display:inline-block">▶</span>
+        <span style="font-size:13px;font-weight:600">📉 추이 차트 보기</span>
       </div>
-      <div id="wks-task-list" style="margin-top:14px"></div>
+      <div id="wk-charts-body" style="display:none;margin-top:12px">
+        <div class="wk-chart-grid">
+          <div class="cc"><h4>과제 상태 추이 (누적 막대)</h4><canvas id="wk-chart-status"></canvas></div>
+          <div class="cc"><h4>전체 평균 진행률 추이</h4><canvas id="wk-chart-avg"></canvas></div>
+          <div class="cc"><h4>그룹별 LLM 핵심과제 진행률</h4><canvas id="wk-chart-llm"></canvas></div>
+          <div class="cc"><h4>그룹별 Agent 핵심과제 진행률</h4><canvas id="wk-chart-agent"></canvas></div>
+        </div>
+      </div>
     </div>
+
+    <div class="wk-insight" id="wk-insight" style="display:none"><div id="wk-insight-body"></div></div>
   </div>
+
+  <!-- 세부현황용 숨겨진 컨테이너 (renderLiveWeek에서 사용) -->
+  <div style="display:none"><div id="wks-group-tbody"></div><div id="wks-task-list"></div></div>
 
   <!-- ═══ 4. 엑셀 업로드 (관리자) ═══ -->
   <div class="wk-section" id="wk-upload-section" style="display:none;margin-top:20px">
@@ -1483,26 +1483,26 @@ function generateInsight(tw,lw,allSnaps){
   let ch='<div class="wk-ins-grid">';
 
   // 착수 전환 카드
-  ch+=`<div class="wk-ins-card ins-green"><h4>✅ 이번 주 착수 전환 <span style="font-weight:400;font-size:12px;opacity:.7">${started.length}건</span></h4>`;
-  if(started.length) {ch+='<ul>';started.forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.taskName}</li>`;});ch+='</ul>';}
-  else ch+='<div class="ins-empty">이번 주 착수 전환 과제 없음</div>';
+  ch+=`<div class="wk-ins-card ins-green"><h4>✅ 착수 전환 <span class="ins-cnt">${started.length}건</span></h4>`;
+  if(started.length){ch+='<ul>';started.slice(0,8).forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.taskName}</li>`;});if(started.length>8) ch+=`<li style="opacity:.5">외 ${started.length-8}건</li>`;ch+='</ul>';}
+  else ch+='<div class="ins-empty">착수 전환 없음</div>';
   ch+='</div>';
 
-  // 진행률 상승 TOP5 카드
-  ch+=`<div class="wk-ins-card ins-blue"><h4>📈 진행률 상승 TOP 5</h4>`;
-  if(top5.length) {ch+='<ul>';top5.forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.task} <span style="font-weight:700">${t.from}% → ${t.to}%</span> <span style="color:#1D9E75;font-weight:700">(+${t.diff}%p)</span></li>`;});ch+='</ul>';}
-  else ch+='<div class="ins-empty">진행률 변화 없음</div>';
+  // 진행률 상승 TOP5
+  ch+=`<div class="wk-ins-card ins-blue"><h4>📈 상승 TOP 5</h4>`;
+  if(top5.length){ch+='<ul>';top5.forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.task}<br><span style="font-size:13px;font-weight:700">${t.from}% → ${t.to}%</span> <span style="color:#1D9E75;font-weight:800;font-size:13px">(+${t.diff}%p)</span></li>`;});ch+='</ul>';}
+  else ch+='<div class="ins-empty">변화 없음</div>';
   ch+='</div>';
 
-  // 3주 이상 0% 카드
-  ch+=`<div class="wk-ins-card ins-orange"><h4>⚠️ 3주 이상 0% 과제 <span style="font-weight:400;font-size:12px;opacity:.7">${stuck.length}건</span></h4>`;
-  if(stuck.length) {ch+='<ul>';stuck.forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.taskName} <span style="opacity:.6">(${t.group||''})</span></li>`;});ch+='</ul>';}
-  else ch+='<div class="ins-empty">해당 없음 — 모든 과제 진행 중!</div>';
+  // 3주 이상 0%
+  ch+=`<div class="wk-ins-card ins-orange"><h4>⚠️ 3주 이상 0% <span class="ins-cnt">${stuck.length}건</span></h4>`;
+  if(stuck.length){ch+='<ul>';stuck.slice(0,8).forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.taskName} <span style="opacity:.5;font-size:10px">${t.group||''}</span></li>`;});if(stuck.length>8) ch+=`<li style="opacity:.5">외 ${stuck.length-8}건</li>`;ch+='</ul>';}
+  else ch+='<div class="ins-empty">전원 진행중!</div>';
   ch+='</div>';
 
-  // 신규 과제 카드
-  ch+=`<div class="wk-ins-card ins-purple"><h4>🆕 신규 과제 <span style="font-weight:400;font-size:12px;opacity:.7">${newTasks.length}건</span></h4>`;
-  if(newTasks.length) {ch+='<ul>';newTasks.forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.taskName}</li>`;});ch+='</ul>';}
+  // 신규 과제
+  ch+=`<div class="wk-ins-card ins-purple"><h4>🆕 신규 과제 <span class="ins-cnt">${newTasks.length}건</span></h4>`;
+  if(newTasks.length){ch+='<ul>';newTasks.slice(0,8).forEach(t=>{ch+=`<li><b>${t.name}</b> — ${t.taskName}</li>`;});if(newTasks.length>8) ch+=`<li style="opacity:.5">외 ${newTasks.length-8}건</li>`;ch+='</ul>';}
   else ch+='<div class="ins-empty">이번 주 신규 과제 없음</div>';
   ch+='</div>';
 
@@ -1678,9 +1678,17 @@ window._wkFilter=function(type){
   });
 
   let h='';
-  // "총 과제 수" 클릭 시 그룹별 프로그레스 바 표시
   if(type==='all') h+=wkBuildGroupBars();
+
+  // 과제 목록을 접기/펼치기로 감싸기
+  h+=`<div style="margin-top:14px">
+    <div class="wk-detail-toggle" onclick="const b=this.nextElementSibling,a=this.querySelector('.wk-arr');const o=b.style.display==='none';b.style.display=o?'block':'none';a.style.transform=o?'rotate(90deg)':'rotate(0)'">
+      <span class="wk-arr" style="font-size:12px;transition:transform .2s;display:inline-block">▶</span>
+      <span style="font-size:13px;font-weight:600">📋 ${title} (${filtered.length}건)</span>
+    </div>
+    <div style="display:none;margin-top:10px">`;
   h+=wkBuildTable(filtered,title);
+  h+=`</div></div>`;
 
   document.getElementById('wks-filter-list').innerHTML=h;
 };
