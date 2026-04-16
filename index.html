@@ -141,82 +141,99 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 .dc.rag{background:var(--pu-lt);border:0.5px solid #afa9ec;color:var(--pu-dk)}
 .dc .dh{font-weight:600;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
 .nc{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px}
-/* ── 주간 현황 패널 ── */
+/* ── 주간 현황 패널 (v2) ── */
 .wk-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.wk-toolbar select{padding:5px 10px;border-radius:6px;border:0.5px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px}
+.wk-toolbar select{padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px;font-weight:500}
 .wk-toolbar .wk-ts{margin-left:auto;font-size:11px;color:var(--tx3)}
-.wk-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.wk-kpi .kc{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:16px;text-align:center}
-.wk-kpi .kc .kc-label{font-size:11px;color:var(--tx2);margin-bottom:6px}
-.wk-kpi .kc .kc-val{font-size:28px;font-weight:700;color:var(--tx)}
-.wk-kpi .kc .kc-delta{font-size:12px;margin-top:4px;font-weight:600}
-.wk-up{color:#1D9E75}.wk-down{color:#D85A30}.wk-zero{color:var(--tx3)}
-.wk-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
-.wk-chart-grid .cc{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:16px}
-.wk-chart-grid .cc h4{font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:10px}
-.wk-insight{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:20px;margin-bottom:12px}
-.wk-insight h3{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--tx)}
-.wk-insight .wi-sec{margin-bottom:14px}
-.wk-insight .wi-sec h4{font-size:12px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
-.wk-insight .wi-sec ul{list-style:none;padding:0;font-size:12px;color:var(--tx2);line-height:1.8}
-.wk-insight .wi-sec ul li::before{content:'· ';color:var(--tx3)}
-.wk-copy-btn{padding:8px 20px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
-.wk-copy-btn:hover{background:var(--ax);color:#fff}
+.wk-section{margin-bottom:10px}
 .wk-empty{text-align:center;padding:60px 20px;color:var(--tx3);font-size:13px}
-/* 클릭형 KPI */
-.wk-kpi-click{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:4px}
-.kc-click{cursor:pointer;transition:all .2s;border:2px solid transparent;position:relative}
-.kc-click:hover{border-color:var(--ax);transform:translateY(-2px);box-shadow:0 4px 12px rgba(29,158,117,.12)}
-.kc-click.on{border-color:var(--ax);background:var(--ax-lt)}
-.kc-click .kc-icon{font-size:20px;margin-bottom:4px}
-.kc-click .kc-sub{font-size:10px;color:var(--tx3);margin-top:4px}
-/* 비교 KPI (큰 버전) */
+.wk-up{color:#1D9E75}.wk-down{color:#D85A30}.wk-zero{color:var(--tx3)}
+.wk-copy-btn{padding:8px 20px;border-radius:20px;border:1px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.wk-copy-btn:hover{background:var(--ax);color:#fff}
+
+/* KPI 카드 — 모던 클릭형 */
+.wk-kpi-click{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:6px}
+.kc{background:var(--bg);border-radius:14px;padding:18px 14px;text-align:center;border:1.5px solid var(--bd);transition:all .2s}
+.kc-click{cursor:pointer}
+.kc-click:hover{border-color:var(--ax);transform:translateY(-3px);box-shadow:0 6px 20px rgba(29,158,117,.10)}
+.kc-click.on{border-color:var(--ax);background:linear-gradient(135deg,#e8f8f2 0%,#f0fdf7 100%)}
+.kc .kc-icon{font-size:22px;margin-bottom:6px}
+.kc .kc-label{font-size:11px;color:var(--tx2);font-weight:500;margin-bottom:4px}
+.kc .kc-val{font-size:26px;font-weight:800;color:var(--tx);letter-spacing:-.5px}
+.kc .kc-sub{font-size:10px;color:var(--tx3);margin-top:5px}
+
+/* 그룹별 프로그레스 바 시각화 */
+.wk-grp-bars{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.wk-grp-bar-item{background:var(--bg);border-radius:12px;padding:14px 16px;border:1px solid var(--bd)}
+.wk-grp-bar-item .grp-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.wk-grp-bar-item .grp-name{font-size:13px;font-weight:700;color:var(--tx)}
+.wk-grp-bar-item .grp-pct{font-size:20px;font-weight:800;color:var(--ax)}
+.wk-grp-bar-item .grp-track{width:100%;height:10px;background:var(--bg3);border-radius:5px;overflow:hidden}
+.wk-grp-bar-item .grp-fill{height:100%;border-radius:5px;transition:width .6s ease}
+.wk-grp-bar-item .grp-meta{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--tx2)}
+.wk-grp-bar-item .grp-meta span b{font-weight:700;color:var(--tx)}
+
+/* 정렬 가능 테이블 */
+.wk-ftable{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg);border-radius:12px;overflow:hidden;border:1px solid var(--bd)}
+.wk-ftable th{background:var(--bg2);padding:10px 12px;text-align:left;font-weight:600;color:var(--tx2);font-size:11px;border-bottom:1px solid var(--bd);cursor:pointer;user-select:none;white-space:nowrap}
+.wk-ftable th:hover{background:var(--bg3)}
+.wk-ftable th .sort-arrow{font-size:9px;margin-left:3px;opacity:.5}
+.wk-ftable th.sorted .sort-arrow{opacity:1;color:var(--ax)}
+.wk-ftable td{padding:8px 12px;border-bottom:0.5px solid var(--bd);color:var(--tx)}
+.wk-ftable tr:last-child td{border-bottom:none}
+.wk-ftable tr:hover{background:var(--bg2)}
+.wk-tag{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block}
+.wk-tag-llm{background:var(--bl-lt);color:var(--bl)}
+.wk-tag-agent{background:var(--pu-lt);color:var(--pu-dk)}
+.wk-status-badge{font-size:10px;padding:3px 10px;border-radius:10px;font-weight:600;display:inline-block}
+.wk-st-done{background:var(--ax-lt);color:var(--ax-dk)}.wk-st-prog{background:var(--bl-lt);color:var(--bl)}.wk-st-not{background:var(--bg3);color:var(--tx3)}
+
+/* 비교 KPI */
 .wk-kpi-compare{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.kc-cmp{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:20px;text-align:center}
-.kc-cmp .kc-icon{font-size:24px;margin-bottom:6px}
-.kc-cmp .kc-label{font-size:11px;color:var(--tx2);margin-bottom:4px}
-.kc-cmp .kc-val{font-size:32px;font-weight:700;color:var(--tx)}
-.kc-cmp .kc-delta{font-size:14px;margin-top:6px;font-weight:700}
+.kc-cmp{background:var(--bg);border:1.5px solid var(--bd);border-radius:14px;padding:22px 16px;text-align:center}
+.kc-cmp .kc-icon{font-size:26px;margin-bottom:6px}
+.kc-cmp .kc-label{font-size:11px;color:var(--tx2);margin-bottom:6px;font-weight:500}
+.kc-cmp .kc-val{font-size:34px;font-weight:800;color:var(--tx);letter-spacing:-.5px}
+.kc-cmp .kc-delta{font-size:15px;margin-top:8px;font-weight:700}
+
 /* 인사이트 카드 */
 .wk-ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.wk-ins-card{border-radius:var(--rl);padding:16px;border-left:4px solid}
-.wk-ins-card h4{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.wk-ins-card ul{list-style:none;padding:0;font-size:12px;line-height:1.9}
-.wk-ins-card ul li{padding:2px 0}
+.wk-ins-card{border-radius:14px;padding:18px 16px;border-left:5px solid}
+.wk-ins-card h4{font-size:14px;font-weight:700;margin-bottom:10px}
+.wk-ins-card ul{list-style:none;padding:0;font-size:12px;line-height:2}
 .wk-ins-card.ins-green{background:#f0faf5;border-color:#1D9E75;color:#085041}
 .wk-ins-card.ins-blue{background:#eef5fc;border-color:#185FA5;color:#0a3a70}
 .wk-ins-card.ins-orange{background:#fef4e8;border-color:#D85A30;color:#7a2800}
 .wk-ins-card.ins-purple{background:#f3f1fe;border-color:#7F77DD;color:#3C3489}
 .wk-ins-card .ins-empty{color:#aaa;font-style:italic;font-size:11px}
+
+/* 차트 */
+.wk-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.wk-chart-grid .cc{background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:16px}
+.wk-chart-grid .cc h4{font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:10px}
+
 /* 세부 토글 */
-.wk-detail-toggle{cursor:pointer;display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);transition:background .2s}
+.wk-detail-toggle{cursor:pointer;display:flex;align-items:center;gap:8px;padding:14px 18px;background:var(--bg);border:1px solid var(--bd);border-radius:14px;transition:background .2s}
 .wk-detail-toggle:hover{background:var(--bg2)}
-/* 필터 테이블 */
-.wk-ftable{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg);border-radius:var(--rl);overflow:hidden;border:0.5px solid var(--bd)}
-.wk-ftable th{background:var(--bg2);padding:8px 12px;text-align:left;font-weight:600;color:var(--tx2);font-size:11px;border-bottom:0.5px solid var(--bd)}
-.wk-ftable td{padding:7px 12px;border-bottom:0.5px solid var(--bd);color:var(--tx)}
-.wk-ftable tr:last-child td{border-bottom:none}
-.wk-ftable tr:hover{background:var(--bg2)}
-.wk-section{margin-bottom:8px}
-.wk-kpi{grid-template-columns:repeat(5,1fr)}
+
+/* 그룹별 테이블/목록 (세부) */
 .wk-group-table-wrap{overflow-x:auto;margin-top:12px}
-.wk-group-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg);border-radius:var(--rl);overflow:hidden;border:0.5px solid var(--bd)}
-.wk-group-table th{background:var(--bg2);padding:8px 12px;text-align:left;font-weight:600;color:var(--tx2);font-size:11px;border-bottom:0.5px solid var(--bd)}
+.wk-group-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg);border-radius:12px;overflow:hidden;border:1px solid var(--bd)}
+.wk-group-table th{background:var(--bg2);padding:8px 12px;text-align:left;font-weight:600;color:var(--tx2);font-size:11px;border-bottom:1px solid var(--bd)}
 .wk-group-table td{padding:8px 12px;border-bottom:0.5px solid var(--bd);color:var(--tx)}
 .wk-group-table tr:last-child td{border-bottom:none}
 .wk-group-table .prog-bar{width:80px;height:6px;background:var(--bg3);border-radius:3px;display:inline-block;vertical-align:middle;margin-right:6px}
 .wk-group-table .prog-fill{height:100%;border-radius:3px;background:var(--ax)}
-.wk-task-group{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);margin-bottom:10px;overflow:hidden}
+.wk-task-group{background:var(--bg);border:1px solid var(--bd);border-radius:12px;margin-bottom:10px;overflow:hidden}
 .wk-task-group-hd{padding:10px 14px;font-size:12px;font-weight:600;color:var(--tx);background:var(--bg2);cursor:pointer;display:flex;align-items:center;gap:8px}
 .wk-task-group-body{padding:0}
 .wk-task-row{display:grid;grid-template-columns:80px 1fr 70px 60px 70px;gap:8px;align-items:center;padding:7px 14px;font-size:11px;border-top:0.5px solid var(--bd)}
 .wk-task-row:first-child{border-top:none}
-.wk-task-row .wk-tag{font-size:10px;padding:1px 6px;border-radius:10px;font-weight:500}
-.wk-tag-llm{background:var(--bl-lt);color:var(--bl)}
-.wk-tag-agent{background:var(--pu-lt);color:var(--pu-dk)}
-.wk-status-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
-.wk-st-done{background:var(--ax-lt);color:var(--ax-dk)}.wk-st-prog{background:var(--bl-lt);color:var(--bl)}.wk-st-not{background:var(--bg3);color:var(--tx3)}
-@media(max-width:768px){.wk-kpi{grid-template-columns:repeat(2,1fr)}.wk-kpi-click{grid-template-columns:repeat(2,1fr)}.wk-kpi-compare{grid-template-columns:repeat(2,1fr)}.wk-ins-grid{grid-template-columns:1fr}.wk-chart-grid{grid-template-columns:1fr}.wk-task-row{grid-template-columns:1fr}}
+
+/* 숨김 인사이트 (복사용) */
+.wk-insight{display:none}
+
+@media(max-width:768px){.wk-kpi-click{grid-template-columns:repeat(2,1fr)}.wk-kpi-compare{grid-template-columns:repeat(2,1fr)}.wk-ins-grid{grid-template-columns:1fr}.wk-chart-grid{grid-template-columns:1fr}.wk-task-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -1572,35 +1589,98 @@ window.renderLiveWeek=renderLiveWeek;
 
 // ── KPI 카드 클릭 필터 ──
 let _wkLiveTasks=[];
-window._wkFilter=function(type){
-  // 하이라이트
-  document.querySelectorAll('.kc-click').forEach(el=>{
-    el.classList.toggle('on',el.dataset.filter===type);
+let _wkSortCol='group',_wkSortAsc=true,_wkFilterType='all';
+const GRP_BAR_COLORS=['#1D9E75','#7F77DD','#BA7517','#D85A30','#185FA5','#6B8E23','#C04078'];
+
+function wkBuildGroupBars(){
+  const G=window._G||[];
+  let h='<div class="wk-grp-bars">';
+  G.forEach((g,i)=>{
+    let tasks=[];
+    if(g.joint&&g.jointTasks) g.jointTasks.forEach(t=>tasks.push(t));
+    (g.members||[]).forEach(m=>(m.tasks||[]).forEach(t=>tasks.push(t)));
+    if(!tasks.length) return;
+    const avg=Math.round(tasks.reduce((s,t)=>s+(Number(t.progress)||0),0)/tasks.length);
+    const done=tasks.filter(t=>(Number(t.progress)||0)>=100||(t.status||'')==='완료').length;
+    const prog=tasks.filter(t=>{const p=Number(t.progress)||0;const s=(t.status||'').trim();return p>0&&p<100&&s!=='완료'&&s!=='미시작';}).length;
+    const notyet=tasks.length-done-prog;
+    const clr=GRP_BAR_COLORS[i%GRP_BAR_COLORS.length];
+    h+=`<div class="wk-grp-bar-item">
+      <div class="grp-hd"><span class="grp-name">${g.name}</span><span class="grp-pct" style="color:${clr}">${avg}%</span></div>
+      <div class="grp-track"><div class="grp-fill" style="width:${avg}%;background:${clr}"></div></div>
+      <div class="grp-meta">
+        <span>과제 <b>${tasks.length}</b>건</span>
+        <span>완료 <b style="color:#1D9E75">${done}</b></span>
+        <span>진행중 <b style="color:#185FA5">${prog}</b></span>
+        <span>미시작 <b style="color:var(--tx3)">${notyet}</b></span>
+      </div>
+    </div>`;
   });
+  h+='</div>';
+  return h;
+}
+
+function wkBuildTable(filtered,title){
+  let h=`<div style="font-size:13px;font-weight:700;color:var(--tx);margin:16px 0 10px">${title} (${filtered.length}건)</div>`;
+  if(!filtered.length) return h+'<div class="wk-empty" style="padding:20px">해당 과제가 없습니다.</div>';
+  const cols=[
+    {key:'group',label:'그룹'},{key:'name',label:'이름'},{key:'taskName',label:'과제명'},
+    {key:'taskType',label:'유형'},{key:'status',label:'상태'},{key:'progress',label:'진행률'}
+  ];
+  h+='<table class="wk-ftable" id="wk-ftable-main"><thead><tr>';
+  cols.forEach(c=>{
+    const sorted=_wkSortCol===c.key;
+    const arrow=sorted?(_wkSortAsc?'▲':'▼'):'▽';
+    h+=`<th class="${sorted?'sorted':''}" onclick="window._wkSort('${c.key}')">${c.label} <span class="sort-arrow">${arrow}</span></th>`;
+  });
+  h+='</tr></thead><tbody>';
+  filtered.forEach(t=>{
+    const stCls=t.progress>=100||t.status==='완료'?'wk-st-done':t.progress===0||t.status==='미시작'?'wk-st-not':'wk-st-prog';
+    const stTxt=t.progress>=100||t.status==='완료'?'완료':t.progress===0||t.status==='미시작'?'미시작':'진행중';
+    const typeCls=(t.taskType||'').includes('agent')||(t.taskType||'').includes('rag')?'wk-tag-agent':'wk-tag-llm';
+    const typeTxt=(t.taskType||'').includes('agent')||(t.taskType||'').includes('rag')?'Agent':'LLM';
+    h+=`<tr><td>${t.group}</td><td style="font-weight:600">${t.name}</td><td>${t.taskName}</td>
+      <td><span class="wk-tag ${typeCls}">${typeTxt}</span></td>
+      <td><span class="wk-status-badge ${stCls}">${stTxt}</span></td>
+      <td style="font-weight:700;color:var(--ax)">${t.progress}%</td></tr>`;
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+window._wkSort=function(col){
+  if(_wkSortCol===col) _wkSortAsc=!_wkSortAsc;
+  else{_wkSortCol=col;_wkSortAsc=true;}
+  window._wkFilter(_wkFilterType);
+};
+
+window._wkFilter=function(type){
+  _wkFilterType=type;
+  document.querySelectorAll('.kc-click').forEach(el=>el.classList.toggle('on',el.dataset.filter===type));
+
   let filtered=[..._wkLiveTasks];
   let title='';
   if(type==='prog'){filtered=filtered.filter(t=>{const s=(t.status||'').trim();const p=t.progress;return s!=='완료'&&p<100&&(s!=='미시작'&&p>0);});title='진행중 과제';}
   else if(type==='done'){filtered=filtered.filter(t=>(t.status||'').trim()==='완료'||t.progress>=100);title='완료된 과제';}
   else if(type==='notyet'){filtered=filtered.filter(t=>(t.status||'').trim()==='미시작'||t.progress===0);title='미시작 과제';}
-  else if(type==='avg'){filtered.sort((a,b)=>a.progress-b.progress);title='전체 과제 (진행률 낮은 순)';}
+  else if(type==='avg'){title='전체 과제 (진행률 낮은 순)';_wkSortCol='progress';_wkSortAsc=true;}
   else{title='전체 과제 목록';}
 
-  let h=`<div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:8px">${title} (${filtered.length}건)</div>`;
-  if(!filtered.length){h+='<div class="wk-empty" style="padding:20px">해당 과제가 없습니다.</div>';}
-  else{
-    h+='<table class="wk-ftable"><thead><tr><th>그룹</th><th>이름</th><th>과제명</th><th>유형</th><th>상태</th><th>진행률</th></tr></thead><tbody>';
-    filtered.forEach(t=>{
-      const stCls=t.progress>=100||t.status==='완료'?'wk-st-done':t.progress===0||t.status==='미시작'?'wk-st-not':'wk-st-prog';
-      const stTxt=t.progress>=100||t.status==='완료'?'완료':t.progress===0||t.status==='미시작'?'미시작':'진행중';
-      const typeCls=t.taskType.includes('agent')||t.taskType.includes('rag')?'wk-tag-agent':'wk-tag-llm';
-      const typeTxt=t.taskType.includes('agent')||t.taskType.includes('rag')?'Agent':'LLM';
-      h+=`<tr><td>${t.group}</td><td style="font-weight:600">${t.name}</td><td>${t.taskName}</td>
-        <td><span class="wk-tag ${typeCls}">${typeTxt}</span></td>
-        <td><span class="wk-status-badge ${stCls}">${stTxt}</span></td>
-        <td style="font-weight:600;color:var(--ax)">${t.progress}%</td></tr>`;
-    });
-    h+='</tbody></table>';
-  }
+  // 정렬
+  filtered.sort((a,b)=>{
+    let va=a[_wkSortCol],vb=b[_wkSortCol];
+    if(typeof va==='string') va=va.toLowerCase();
+    if(typeof vb==='string') vb=vb.toLowerCase();
+    if(va<vb) return _wkSortAsc?-1:1;
+    if(va>vb) return _wkSortAsc?1:-1;
+    return 0;
+  });
+
+  let h='';
+  // "총 과제 수" 클릭 시 그룹별 프로그레스 바 표시
+  if(type==='all') h+=wkBuildGroupBars();
+  h+=wkBuildTable(filtered,title);
+
   document.getElementById('wks-filter-list').innerHTML=h;
 };
 window._wkCompare=renderWeekly;
