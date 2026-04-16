@@ -1281,12 +1281,12 @@ function renderLiveWeek(){
     if(!groupTasks.length) return;
     const gAvg=Math.round(groupTasks.reduce((a,t)=>a+t.progress,0)/groupTasks.length);
     lhtml+=`<div class="wk-task-group">
-      <div class="wk-task-group-hd" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-        <span style="font-size:10px">▶</span>
+      <div class="wk-task-group-hd" onclick="const b=this.nextElementSibling,a=this.querySelector('.wk-arr');const o=b.style.display==='none';b.style.display=o?'block':'none';a.style.transform=o?'rotate(90deg)':'rotate(0)'">
+        <span class="wk-arr" style="font-size:10px;transition:transform .2s;display:inline-block">▶</span>
         <span>${g.name}</span>
         <span style="font-size:11px;color:var(--tx3);margin-left:auto">${groupTasks.length}건 · 평균 ${gAvg}%</span>
       </div>
-      <div class="wk-task-group-body">`;
+      <div class="wk-task-group-body" style="display:none">`;
     groupTasks.forEach(t=>{
       const p=t.progress;
       const s=(t.status||'').trim();
