@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AX Champion 현황 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕',sans-serif;background:#f5f4f0;color:#1a1a18;padding:20px 24px}
@@ -548,6 +549,9 @@ function apply(data){
     if(typeof window[fn]==='function')window[fn]();
   });
 }
+
+// Firebase 함수를 일반 스크립트에서 사용할 수 있도록 노출
+window._fb={db,doc,setDoc,collection,query,orderBy,getDocs};
 
 setSync('connecting');
 onSnapshot(DOC,snap=>{setSync('synced');if(snap.exists())apply(snap.data());},e=>{console.error(e);setSync('error');});
@@ -1451,6 +1455,7 @@ function generateInsight(tw,lw,allSnaps){
 
 async function loadSnapshots(){
   try{
+    const {db,collection,query,orderBy,getDocs}=window._fb;
     const ref=collection(db,'weekly_snapshots');
     const q=query(ref,orderBy('createdAt','desc'));
     const snap=await getDocs(q);
@@ -1561,6 +1566,7 @@ window._wkUploadExcel=async function(){
     }
 
     const {Timestamp}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const {db,doc,setDoc}=window._fb;
     const docRef=doc(db,'weekly_snapshots',dateId);
     await setDoc(docRef,{
       tasks,groupSummary,
@@ -1601,9 +1607,13 @@ function setupAutoRefresh(){
 
 // ── 부트 ──
 initToday();renderTask();buildMilestone();renderNotices();renderEdu();renderMeetings();buildOverviewGroups();renderLiveWeek();
-loadSnapshots();setupAutoRefresh();
+// loadSnapshots는 module 스크립트의 _fb가 준비된 후 호출
+function tryLoadSnapshots(){
+  if(window._fb){loadSnapshots();setupAutoRefresh();}
+  else setTimeout(tryLoadSnapshots,50);
+}
+tryLoadSnapshots();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 function downloadExcel(){
