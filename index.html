@@ -162,7 +162,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 .wk-copy-btn{padding:8px 20px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
 .wk-copy-btn:hover{background:var(--ax);color:#fff}
 .wk-empty{text-align:center;padding:60px 20px;color:var(--tx3);font-size:13px}
-@media(max-width:768px){.wk-kpi{grid-template-columns:repeat(2,1fr)}.wk-chart-grid{grid-template-columns:1fr}}
+.wk-section{margin-bottom:8px}
+.wk-kpi{grid-template-columns:repeat(5,1fr)}
+.wk-group-table-wrap{overflow-x:auto;margin-top:12px}
+.wk-group-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg);border-radius:var(--rl);overflow:hidden;border:0.5px solid var(--bd)}
+.wk-group-table th{background:var(--bg2);padding:8px 12px;text-align:left;font-weight:600;color:var(--tx2);font-size:11px;border-bottom:0.5px solid var(--bd)}
+.wk-group-table td{padding:8px 12px;border-bottom:0.5px solid var(--bd);color:var(--tx)}
+.wk-group-table tr:last-child td{border-bottom:none}
+.wk-group-table .prog-bar{width:80px;height:6px;background:var(--bg3);border-radius:3px;display:inline-block;vertical-align:middle;margin-right:6px}
+.wk-group-table .prog-fill{height:100%;border-radius:3px;background:var(--ax)}
+.wk-task-group{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);margin-bottom:10px;overflow:hidden}
+.wk-task-group-hd{padding:10px 14px;font-size:12px;font-weight:600;color:var(--tx);background:var(--bg2);cursor:pointer;display:flex;align-items:center;gap:8px}
+.wk-task-group-body{padding:0}
+.wk-task-row{display:grid;grid-template-columns:80px 1fr 70px 60px 70px;gap:8px;align-items:center;padding:7px 14px;font-size:11px;border-top:0.5px solid var(--bd)}
+.wk-task-row:first-child{border-top:none}
+.wk-task-row .wk-tag{font-size:10px;padding:1px 6px;border-radius:10px;font-weight:500}
+.wk-tag-llm{background:var(--bl-lt);color:var(--bl)}
+.wk-tag-agent{background:var(--pu-lt);color:var(--pu-dk)}
+.wk-status-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.wk-st-done{background:var(--ax-lt);color:var(--ax-dk)}.wk-st-prog{background:var(--bl-lt);color:var(--bl)}.wk-st-not{background:var(--bg3);color:var(--tx3)}
+@media(max-width:768px){.wk-kpi{grid-template-columns:repeat(2,1fr)}.wk-chart-grid{grid-template-columns:1fr}.wk-task-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -346,35 +365,81 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 
 <!-- ══ TAB: 주간 현황 ══ -->
 <div id="view-weekly" class="view">
-  <div class="wk-toolbar">
-    <label style="font-size:12px;font-weight:600;color:var(--tx2)">비교 주차</label>
-    <select id="wk-sel-this" onchange="window._wkCompare()"></select>
-    <span style="font-size:11px;color:var(--tx3)">vs</span>
-    <select id="wk-sel-last" onchange="window._wkCompare()"></select>
-    <button class="wk-copy-btn" onclick="window._wkCopy()" style="margin-left:8px">📋 인사이트 복사</button>
-    <span class="wk-ts" id="wk-timestamp"></span>
+
+  <!-- ── 해당 주 주간현황 보기 ── -->
+  <div class="wk-section">
+    <div class="wk-toolbar">
+      <label style="font-size:13px;font-weight:700;color:var(--tx)">📋 해당 주 주간현황 보기</label>
+      <select id="wk-sel-single" onchange="window._wkSingle()"></select>
+      <span class="wk-ts" id="wk-timestamp"></span>
+    </div>
+    <!-- 단독 KPI -->
+    <div class="wk-kpi" id="wk-single-kpi">
+      <div class="kc"><div class="kc-label">총 과제 수</div><div class="kc-val" id="wks-total">-</div></div>
+      <div class="kc"><div class="kc-label">진행중</div><div class="kc-val" id="wks-prog">-</div></div>
+      <div class="kc"><div class="kc-label">완료</div><div class="kc-val" id="wks-done">-</div></div>
+      <div class="kc"><div class="kc-label">미시작</div><div class="kc-val" id="wks-notyet">-</div></div>
+      <div class="kc"><div class="kc-label">평균 진행률</div><div class="kc-val" id="wks-avg">-</div></div>
+    </div>
+    <!-- 그룹별 현황 테이블 -->
+    <div class="wk-group-table-wrap">
+      <table class="wk-group-table" id="wks-group-table">
+        <thead><tr><th>그룹</th><th>LLM 핵심과제</th><th>LLM 진행률</th><th>Agent 핵심과제</th><th>Agent 진행률</th></tr></thead>
+        <tbody id="wks-group-tbody"></tbody>
+      </table>
+    </div>
+    <!-- 개인별 과제 목록 -->
+    <div id="wks-task-list" style="margin-top:14px"></div>
   </div>
 
-  <!-- KPI 카드 -->
-  <div class="wk-kpi">
-    <div class="kc"><div class="kc-label">총 과제 수</div><div class="kc-val" id="wk-total">-</div><div class="kc-delta" id="wk-d-total"></div></div>
-    <div class="kc"><div class="kc-label">진행중</div><div class="kc-val" id="wk-prog">-</div><div class="kc-delta" id="wk-d-prog"></div></div>
-    <div class="kc"><div class="kc-label">미시작</div><div class="kc-val" id="wk-notyet">-</div><div class="kc-delta" id="wk-d-notyet"></div></div>
-    <div class="kc"><div class="kc-label">평균 진행률</div><div class="kc-val" id="wk-avg">-</div><div class="kc-delta" id="wk-d-avg"></div></div>
+  <hr style="border:none;border-top:1px dashed var(--bd);margin:24px 0">
+
+  <!-- ── 주차별 비교 ── -->
+  <div class="wk-section">
+    <div class="wk-toolbar">
+      <label style="font-size:13px;font-weight:700;color:var(--tx)">📊 주차별 비교 분석</label>
+      <select id="wk-sel-this" onchange="window._wkCompare()"></select>
+      <span style="font-size:11px;color:var(--tx3)">vs</span>
+      <select id="wk-sel-last" onchange="window._wkCompare()"></select>
+      <button class="wk-copy-btn" onclick="window._wkCopy()" style="margin-left:8px">📋 인사이트 복사</button>
+    </div>
+
+    <!-- 비교 KPI 카드 -->
+    <div class="wk-kpi">
+      <div class="kc"><div class="kc-label">총 과제 수</div><div class="kc-val" id="wk-total">-</div><div class="kc-delta" id="wk-d-total"></div></div>
+      <div class="kc"><div class="kc-label">진행중</div><div class="kc-val" id="wk-prog">-</div><div class="kc-delta" id="wk-d-prog"></div></div>
+      <div class="kc"><div class="kc-label">미시작</div><div class="kc-val" id="wk-notyet">-</div><div class="kc-delta" id="wk-d-notyet"></div></div>
+      <div class="kc"><div class="kc-label">평균 진행률</div><div class="kc-val" id="wk-avg">-</div><div class="kc-delta" id="wk-d-avg"></div></div>
+    </div>
+
+    <!-- 차트 -->
+    <div class="wk-chart-grid">
+      <div class="cc"><h4>과제 상태 추이 (누적 막대)</h4><canvas id="wk-chart-status"></canvas></div>
+      <div class="cc"><h4>전체 평균 진행률 추이</h4><canvas id="wk-chart-avg"></canvas></div>
+      <div class="cc"><h4>그룹별 LLM 핵심과제 진행률</h4><canvas id="wk-chart-llm"></canvas></div>
+      <div class="cc"><h4>그룹별 Agent 핵심과제 진행률</h4><canvas id="wk-chart-agent"></canvas></div>
+    </div>
+
+    <!-- 인사이트 -->
+    <div class="wk-insight" id="wk-insight">
+      <h3>📊 주간 인사이트</h3>
+      <div id="wk-insight-body"><div class="wk-empty">스냅샷 데이터를 불러오는 중...</div></div>
+    </div>
   </div>
 
-  <!-- 차트 -->
-  <div class="wk-chart-grid">
-    <div class="cc"><h4>과제 상태 추이 (누적 막대)</h4><canvas id="wk-chart-status"></canvas></div>
-    <div class="cc"><h4>전체 평균 진행률 추이</h4><canvas id="wk-chart-avg"></canvas></div>
-    <div class="cc"><h4>그룹별 LLM 핵심과제 진행률</h4><canvas id="wk-chart-llm"></canvas></div>
-    <div class="cc"><h4>그룹별 Agent 핵심과제 진행률</h4><canvas id="wk-chart-agent"></canvas></div>
-  </div>
+  <hr style="border:none;border-top:1px dashed var(--bd);margin:24px 0">
 
-  <!-- 인사이트 -->
-  <div class="wk-insight" id="wk-insight">
-    <h3>📊 주간 인사이트</h3>
-    <div id="wk-insight-body"><div class="wk-empty">스냅샷 데이터를 불러오는 중...</div></div>
+  <!-- ── 엑셀 업로드 (관리자) ── -->
+  <div class="wk-section" id="wk-upload-section" style="display:none">
+    <div class="wk-toolbar">
+      <label style="font-size:13px;font-weight:700;color:var(--tx)">📤 엑셀 스냅샷 업로드</label>
+    </div>
+    <div style="background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:16px">
+      <p style="font-size:12px;color:var(--tx2);margin-bottom:10px">대시보드에서 다운로드한 엑셀 파일(AX_Champion_현황_YYYYMMDD.xlsx)을 업로드하면 해당 주차 스냅샷이 Firestore에 저장됩니다.</p>
+      <input type="file" id="wk-upload-file" accept=".xlsx" style="font-size:12px">
+      <button class="wk-copy-btn" onclick="window._wkUploadExcel()" style="margin-left:8px">업로드</button>
+      <span id="wk-upload-status" style="font-size:11px;color:var(--tx3);margin-left:8px"></span>
+    </div>
   </div>
 </div>
 
@@ -1136,6 +1201,73 @@ function wkDelta(el,val,suffix,invert){
   el.className='kc-delta '+(good?'wk-up':'wk-down');
 }
 
+// ── 해당 주 단독 현황 보기 ──
+function renderSingleWeek(){
+  const idx=Number(document.getElementById('wk-sel-single').value);
+  const snap=_wkAll[idx];
+  if(!snap) return;
+  const st=wkStats(snap);
+  document.getElementById('wks-total').textContent=st.total+'건';
+  document.getElementById('wks-prog').textContent=st.prog+'건';
+  document.getElementById('wks-done').textContent=st.done+'건';
+  document.getElementById('wks-notyet').textContent=st.notyet+'건';
+  document.getElementById('wks-avg').textContent=st.avg+'%';
+
+  // 그룹별 핵심과제 테이블
+  const gs=snap.groupSummary||[];
+  let thtml='';
+  gs.forEach(g=>{
+    const lp=Number(g.llmProgress)||0, ap=Number(g.agentProgress)||0;
+    thtml+=`<tr>
+      <td style="font-weight:600">${g.group}</td>
+      <td style="font-size:11px">${g.llmTaskName||'-'}</td>
+      <td><div class="prog-bar"><div class="prog-fill" style="width:${lp}%"></div></div>${lp}%</td>
+      <td style="font-size:11px">${g.agentTaskName||'-'}</td>
+      <td><div class="prog-bar"><div class="prog-fill" style="width:${ap}%;background:var(--pu)"></div></div>${ap}%</td>
+    </tr>`;
+  });
+  document.getElementById('wks-group-tbody').innerHTML=thtml;
+
+  // 개인별 과제 목록 (그룹별 접기)
+  const tasks=snap.tasks||[];
+  const groups=new Map();
+  tasks.forEach(t=>{
+    const g=t.group||'기타';
+    if(!groups.has(g)) groups.set(g,[]);
+    groups.get(g).push(t);
+  });
+  let lhtml='';
+  groups.forEach((members,gName)=>{
+    const gSt=members.reduce((a,t)=>a+(Number(t.progress)||0),0);
+    const gAvg=members.length?Math.round(gSt/members.length):0;
+    lhtml+=`<div class="wk-task-group">
+      <div class="wk-task-group-hd" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <span style="font-size:10px;transition:transform .2s">▶</span>
+        <span>${gName}</span>
+        <span style="font-size:11px;color:var(--tx3);margin-left:auto">${members.length}건 · 평균 ${gAvg}%</span>
+      </div>
+      <div class="wk-task-group-body">`;
+    members.forEach(t=>{
+      const p=Number(t.progress)||0;
+      const s=(t.status||'').trim();
+      const stCls=s==='완료'||p>=100?'wk-st-done':s==='미시작'||p===0?'wk-st-not':'wk-st-prog';
+      const stTxt=s==='완료'||p>=100?'완료':s==='미시작'||p===0?'미시작':'진행중';
+      const typeCls=(t.taskType||'').includes('Agent')||(t.taskType||'').includes('RAG')?'wk-tag-agent':'wk-tag-llm';
+      const typeTxt=(t.taskType||'').includes('Agent')||(t.taskType||'').includes('RAG')?'Agent':'LLM';
+      lhtml+=`<div class="wk-task-row">
+        <span style="font-weight:600">${t.name||''}</span>
+        <span>${t.taskName||''} <span class="wk-tag ${typeCls}">${typeTxt}</span></span>
+        <span class="wk-status-badge ${stCls}">${stTxt}</span>
+        <span style="font-weight:600;color:var(--ax)">${p}%</span>
+        <span style="color:var(--tx3)">${t.dept||''}</span>
+      </div>`;
+    });
+    lhtml+=`</div></div>`;
+  });
+  document.getElementById('wks-task-list').innerHTML=lhtml;
+}
+
+// ── 비교 KPI ──
 function renderKPI(tw,lw){
   const a=wkStats(tw),b=wkStats(lw);
   document.getElementById('wk-total').textContent=a.total+'건';
@@ -1153,7 +1285,6 @@ function renderCharts(snaps){
   const sorted=[...snaps].sort((a,b)=>a.id.localeCompare(b.id));
   const labels=sorted.map(s=>{const w=wkWeekNum(s.id);return w+'주차';});
 
-  // 차트1: 상태 누적 막대
   const notyet=[],prog=[],done=[];
   sorted.forEach(s=>{const st=wkStats(s);notyet.push(st.notyet);prog.push(st.prog);done.push(st.done);});
   _wkCharts[0]&&_wkCharts[0].destroy();
@@ -1163,24 +1294,20 @@ function renderCharts(snaps){
     {label:'완료',data:done,backgroundColor:'#1D9E75',stack:'s'}
   ]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
 
-  // 차트2: 평균 진행률 꺾은선
   const avgs=sorted.map(s=>wkStats(s).avg);
   _wkCharts[1]&&_wkCharts[1].destroy();
   _wkCharts[1]=new Chart(document.getElementById('wk-chart-avg'),{type:'line',data:{labels,datasets:[
     {label:'평균 진행률(%)',data:avgs,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',fill:true,tension:0.3,pointRadius:4}
   ]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
 
-  // 그룹 목록 수집
   const groupSet=new Set();
   sorted.forEach(s=>(s.groupSummary||[]).forEach(g=>groupSet.add(g.group)));
   const groups=[...groupSet];
 
-  // 차트3: LLM 진행률
   const llmDS=groups.map((g,i)=>({label:g,data:sorted.map(s=>{const f=(s.groupSummary||[]).find(x=>x.group===g);return f?Number(f.llmProgress)||0:null;}),borderColor:GRP_COLORS[i%GRP_COLORS.length],tension:0.3,pointRadius:3,fill:false}));
   _wkCharts[2]&&_wkCharts[2].destroy();
   _wkCharts[2]=new Chart(document.getElementById('wk-chart-llm'),{type:'line',data:{labels,datasets:llmDS},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
 
-  // 차트4: Agent 진행률
   const agtDS=groups.map((g,i)=>({label:g,data:sorted.map(s=>{const f=(s.groupSummary||[]).find(x=>x.group===g);return f?Number(f.agentProgress)||0:null;}),borderColor:GRP_COLORS[i%GRP_COLORS.length],tension:0.3,pointRadius:3,fill:false,borderDash:[5,3]}));
   _wkCharts[3]&&_wkCharts[3].destroy();
   _wkCharts[3]=new Chart(document.getElementById('wk-chart-agent'),{type:'line',data:{labels,datasets:agtDS},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
@@ -1195,7 +1322,6 @@ function generateInsight(tw,lw,allSnaps){
   const twKey=t=>t.name+'||'+t.taskName;
   const lwMap=new Map();lwTasks.forEach(t=>lwMap.set(twKey(t),t));
 
-  // 1. 착수 전환 (미시작→진행중)
   const started=[];
   twTasks.forEach(t=>{
     const old=lwMap.get(twKey(t));
@@ -1206,7 +1332,6 @@ function generateInsight(tw,lw,allSnaps){
     }
   });
 
-  // 2. 진행률 상승 TOP5
   const ups=[];
   twTasks.forEach(t=>{
     const old=lwMap.get(twKey(t));
@@ -1218,7 +1343,6 @@ function generateInsight(tw,lw,allSnaps){
   ups.sort((a,b)=>b.diff-a.diff);
   const top5=ups.slice(0,5);
 
-  // 3. 3주 이상 연속 0%
   const sorted=[...allSnaps].sort((a,b)=>a.id.localeCompare(b.id));
   const stuck=[];
   if(sorted.length>=3){
@@ -1237,16 +1361,10 @@ function generateInsight(tw,lw,allSnaps){
     });
   }
 
-  // 4. 신규 과제
-  const twKeySet=new Set(twTasks.map(twKey));
   const lwKeySet=new Set(lwTasks.map(twKey));
   const newTasks=twTasks.filter(t=>!lwKeySet.has(twKey(t)));
-
-  // 날짜/주차
-  const twLabel=wkLabel(tw.id);
   const weekNum=wkWeekNum(tw.id);
 
-  // DOM 렌더
   let html='';
   html+=`<div class="wi-sec"><h4>✅ 이번 주 착수 전환 (${started.length}건)</h4><ul>`;
   if(started.length) started.forEach(t=>{html+=`<li>${t.name} — ${t.taskName} (미시작→진행중)</li>`;});
@@ -1267,10 +1385,8 @@ function generateInsight(tw,lw,allSnaps){
   if(newTasks.length) newTasks.forEach(t=>{html+=`<li>${t.name} — ${t.taskName}</li>`;});
   else html+='<li style="color:var(--tx3)">해당 없음</li>';
   html+='</ul></div>';
-
   body.innerHTML=html;
 
-  // 복사용 텍스트 생성
   const d=new Date();
   const dateStr=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
   let txt='─────────────────────────────\n';
@@ -1300,25 +1416,30 @@ async function loadSnapshots(){
     _wkAll=[];
     snap.forEach(d=>{_wkAll.push({id:d.id,...d.data()});});
 
+    const selSingle=document.getElementById('wk-sel-single');
     const selThis=document.getElementById('wk-sel-this');
     const selLast=document.getElementById('wk-sel-last');
-    selThis.innerHTML='';selLast.innerHTML='';
+    selSingle.innerHTML='';selThis.innerHTML='';selLast.innerHTML='';
 
     if(_wkAll.length===0){
+      selSingle.innerHTML='<option>데이터 없음</option>';
       selThis.innerHTML='<option>데이터 없음</option>';
       selLast.innerHTML='<option>데이터 없음</option>';
-      document.getElementById('wk-insight-body').innerHTML='<div class="wk-empty">아직 주간 스냅샷 데이터가 없습니다.<br>Firestore의 <b>weekly_snapshots</b> 컬렉션에 데이터를 추가하면 자동으로 표시됩니다.</div>';
+      document.getElementById('wk-insight-body').innerHTML='<div class="wk-empty">아직 주간 스냅샷 데이터가 없습니다.<br>관리자 모드에서 엑셀 파일을 업로드하거나 Firestore에 직접 데이터를 추가하세요.</div>';
       return;
     }
 
     _wkAll.forEach((s,i)=>{
       const lbl=wkLabel(s.id);
+      selSingle.innerHTML+=`<option value="${i}">${lbl}</option>`;
       selThis.innerHTML+=`<option value="${i}">${lbl}</option>`;
       selLast.innerHTML+=`<option value="${i}">${lbl}</option>`;
     });
+    selSingle.value='0';
     selThis.value='0';
     selLast.value=_wkAll.length>1?'1':'0';
 
+    renderSingleWeek();
     renderWeekly();
     updateTimestamp();
   }catch(e){
@@ -1344,6 +1465,7 @@ function updateTimestamp(){
     `마지막 업데이트: ${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${dn[d.getDay()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
+window._wkSingle=renderSingleWeek;
 window._wkCompare=renderWeekly;
 window._wkCopy=function(){
   if(!_wkInsightText){alert('복사할 인사이트가 없습니다.');return;}
@@ -1360,6 +1482,72 @@ window._wkCopy=function(){
     btn.textContent='✅ 복사 완료!';
     setTimeout(()=>{btn.textContent='📋 인사이트 복사';},2000);
   });
+};
+
+// ── 엑셀 업로드 (관리자 전용) ──
+window._wkUploadExcel=async function(){
+  const fileInput=document.getElementById('wk-upload-file');
+  const statusEl=document.getElementById('wk-upload-status');
+  if(!fileInput.files.length){statusEl.textContent='파일을 선택해주세요.';return;}
+  const file=fileInput.files[0];
+  const fname=file.name;
+  // 파일명에서 날짜 추출: AX_Champion_현황_YYYYMMDD.xlsx
+  const dateMatch=fname.match(/(\d{8})/);
+  if(!dateMatch){statusEl.textContent='파일명에서 날짜(YYYYMMDD)를 찾을 수 없습니다.';return;}
+  const dateId=dateMatch[1];
+  statusEl.textContent='업로드 중...';
+
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+
+    const taskSheet=wb.Sheets['과제현황'];
+    if(!taskSheet){statusEl.textContent='"과제현황" 시트를 찾을 수 없습니다.';return;}
+    const taskRows=XLSX.utils.sheet_to_json(taskSheet);
+    const tasks=taskRows.map(r=>({
+      group:r['그룹']||'',leader:r['대표']||'',name:r['이름']||'',rank:r['직급']||'',
+      dept:r['소속팀']||'',taskType:r['과제유형']||'',taskName:r['과제명']||'',
+      status:r['상태']||'',progress:Number(r['진행률(%)'])||0,
+      achievement:r['달성내용']||'',plan:r['향후계획']||'',note:r['비고']||''
+    }));
+
+    const groupSheet=wb.Sheets['그룹별핵심과제'];
+    let groupSummary=[];
+    if(groupSheet){
+      const groupRows=XLSX.utils.sheet_to_json(groupSheet);
+      groupSummary=groupRows.map(r=>({
+        group:r['그룹']||'',leader:r['대표']||'',
+        llmTaskName:r['LLM 핵심과제명']||'',llmTaskContent:r['LLM 과제 내용']||'',
+        llmProgress:Number(r['LLM 평균진행률(%)'])||0,
+        agentTaskName:r['Agent 핵심과제명']||'',agentTaskContent:r['Agent 과제 내용']||'',
+        agentProgress:Number(r['Agent 평균진행률(%)'])||0
+      }));
+    }
+
+    const {Timestamp}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const docRef=doc(db,'weekly_snapshots',dateId);
+    await setDoc(docRef,{
+      tasks,groupSummary,
+      createdAt:Timestamp.fromDate(new Date(
+        parseInt(dateId.slice(0,4)),parseInt(dateId.slice(4,6))-1,parseInt(dateId.slice(6,8)),13,0,0
+      ))
+    });
+
+    statusEl.textContent=`✅ ${dateId} 업로드 완료! (${tasks.length}건)`;
+    fileInput.value='';
+    await loadSnapshots();
+  }catch(e){
+    console.error('엑셀 업로드 실패:',e);
+    statusEl.textContent='❌ 업로드 실패: '+e.message;
+  }
+};
+
+// ── 관리자 모드 → 업로드 섹션 토글 ──
+const _origToggleAdmin=window.toggleAdmin;
+window.toggleAdmin=function(){
+  _origToggleAdmin();
+  const sec=document.getElementById('wk-upload-section');
+  if(sec) sec.style.display=adminMode?'block':'none';
 };
 
 // 매주 목요일 13:00 자동 갱신
