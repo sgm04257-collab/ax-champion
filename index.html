@@ -140,6 +140,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 .dc.rag{background:var(--pu-lt);border:0.5px solid #afa9ec;color:var(--pu-dk)}
 .dc .dh{font-weight:600;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
 .nc{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px}
+/* ── 주간 현황 패널 ── */
+.wk-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.wk-toolbar select{padding:5px 10px;border-radius:6px;border:0.5px solid var(--bd);background:var(--bg);color:var(--tx);font-size:12px}
+.wk-toolbar .wk-ts{margin-left:auto;font-size:11px;color:var(--tx3)}
+.wk-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.wk-kpi .kc{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:16px;text-align:center}
+.wk-kpi .kc .kc-label{font-size:11px;color:var(--tx2);margin-bottom:6px}
+.wk-kpi .kc .kc-val{font-size:28px;font-weight:700;color:var(--tx)}
+.wk-kpi .kc .kc-delta{font-size:12px;margin-top:4px;font-weight:600}
+.wk-up{color:#1D9E75}.wk-down{color:#D85A30}.wk-zero{color:var(--tx3)}
+.wk-chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.wk-chart-grid .cc{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:16px}
+.wk-chart-grid .cc h4{font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:10px}
+.wk-insight{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--rl);padding:20px;margin-bottom:12px}
+.wk-insight h3{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--tx)}
+.wk-insight .wi-sec{margin-bottom:14px}
+.wk-insight .wi-sec h4{font-size:12px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.wk-insight .wi-sec ul{list-style:none;padding:0;font-size:12px;color:var(--tx2);line-height:1.8}
+.wk-insight .wi-sec ul li::before{content:'· ';color:var(--tx3)}
+.wk-copy-btn{padding:8px 20px;border-radius:20px;border:0.5px solid var(--ax);background:var(--ax-lt);color:var(--ax-dk);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.wk-copy-btn:hover{background:var(--ax);color:#fff}
+.wk-empty{text-align:center;padding:60px 20px;color:var(--tx3);font-size:13px}
+@media(max-width:768px){.wk-kpi{grid-template-columns:repeat(2,1fr)}.wk-chart-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -252,6 +275,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
   <button class="tab"     onclick="sw('meeting')">주간 회의록</button>
   <button class="tab"     onclick="sw('edu')">교육 안내</button>
   <button class="tab"     onclick="sw('announce')">공지 / 마일스톤</button>
+  <button class="tab"     onclick="sw('weekly')">📊 주간 현황</button>
 </div>
 
 <!-- ══ TAB: 개요 ══ -->
@@ -320,10 +344,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
   </div>
 </div>
 
+<!-- ══ TAB: 주간 현황 ══ -->
+<div id="view-weekly" class="view">
+  <div class="wk-toolbar">
+    <label style="font-size:12px;font-weight:600;color:var(--tx2)">비교 주차</label>
+    <select id="wk-sel-this" onchange="window._wkCompare()"></select>
+    <span style="font-size:11px;color:var(--tx3)">vs</span>
+    <select id="wk-sel-last" onchange="window._wkCompare()"></select>
+    <button class="wk-copy-btn" onclick="window._wkCopy()" style="margin-left:8px">📋 인사이트 복사</button>
+    <span class="wk-ts" id="wk-timestamp"></span>
+  </div>
+
+  <!-- KPI 카드 -->
+  <div class="wk-kpi">
+    <div class="kc"><div class="kc-label">총 과제 수</div><div class="kc-val" id="wk-total">-</div><div class="kc-delta" id="wk-d-total"></div></div>
+    <div class="kc"><div class="kc-label">진행중</div><div class="kc-val" id="wk-prog">-</div><div class="kc-delta" id="wk-d-prog"></div></div>
+    <div class="kc"><div class="kc-label">미시작</div><div class="kc-val" id="wk-notyet">-</div><div class="kc-delta" id="wk-d-notyet"></div></div>
+    <div class="kc"><div class="kc-label">평균 진행률</div><div class="kc-val" id="wk-avg">-</div><div class="kc-delta" id="wk-d-avg"></div></div>
+  </div>
+
+  <!-- 차트 -->
+  <div class="wk-chart-grid">
+    <div class="cc"><h4>과제 상태 추이 (누적 막대)</h4><canvas id="wk-chart-status"></canvas></div>
+    <div class="cc"><h4>전체 평균 진행률 추이</h4><canvas id="wk-chart-avg"></canvas></div>
+    <div class="cc"><h4>그룹별 LLM 핵심과제 진행률</h4><canvas id="wk-chart-llm"></canvas></div>
+    <div class="cc"><h4>그룹별 Agent 핵심과제 진행률</h4><canvas id="wk-chart-agent"></canvas></div>
+  </div>
+
+  <!-- 인사이트 -->
+  <div class="wk-insight" id="wk-insight">
+    <h3>📊 주간 인사이트</h3>
+    <div id="wk-insight-body"><div class="wk-empty">스냅샷 데이터를 불러오는 중...</div></div>
+  </div>
+</div>
+
 <!-- ══ TAB: 공지/마일스톤 ══ -->
 <div id="view-announce" class="view">
   <div class="sec-hd">
-    <div class="sec-title">2025 연중 마일스톤</div>
+    <div class="sec-title">2026 연중 마일스톤</div>
     <button id="ms-edit-btn" onclick="openMsModal()" style="display:none;font-size:11px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg);color:var(--tx2);cursor:pointer">✏️ 마일스톤 편집</button>
   </div>
   <div class="ms-wrap"><div class="ms-grid" id="ms-grid"></div></div>
@@ -348,7 +406,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕
 <!-- Firebase (module) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const cfg = {
   apiKey:"AIzaSyBLqnJaZgD2k0lIo63mt9XHKSXqxy-T_mk",
   authDomain:"ax-champion.firebaseapp.com",
@@ -484,7 +542,7 @@ window._G=[
   ]},
 ];
 
-window._notices=[{id:1,title:'AX Champion 현황 대시보드 오픈',badge:'공지',color:'ax',date:'2025-03-27',body:'AX Champion 현황 대시보드가 오픈되었습니다.\n매주 목요일 14:00~14:30 정기 미팅을 통해 그룹별 과제를 함께 관리합니다.'}];
+window._notices=[{id:1,title:'AX Champion 현황 대시보드 오픈',badge:'공지',color:'ax',date:'2026-03-27',body:'AX Champion 현황 대시보드가 오픈되었습니다.\n매주 목요일 14:00~14:30 정기 미팅을 통해 그룹별 과제를 함께 관리합니다.'}];
 window._meetings=[];
 window._eduRows=[
   {id:1,color:'am',badge:'사전학습',name:'기초 역량 강화 (VOD)',schedule:'~ 3/17(화) 이전',target:'지원실 전 임직원 (Champion 중심)',method:'교육 녹화본',hours:'3h × 3일',req:'Champion 필수'},
@@ -882,7 +940,7 @@ function toggleAdmin(){
 
 // ── 탭 ──
 function sw(t){
-  const tabs=['overview','task','meeting','edu','announce'];
+  const tabs=['overview','task','meeting','edu','announce','weekly'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('on',tabs[i]===t));
   tabs.forEach(v=>document.getElementById('view-'+v).classList.toggle('on',v===t));
 }
@@ -1033,12 +1091,295 @@ window.buildOverviewGroups=buildOverviewGroups;
 function initToday(){
   const d=new Date(),dn=['일','월','화','수','목','금','토'];
   document.getElementById('today-badge').textContent=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} (${dn[d.getDay()]})`;
-  document.getElementById('week-badge').textContent='Week '+Math.max(1,Math.floor((d-new Date('2025-03-27'))/(7*864e5))+1);
+  document.getElementById('week-badge').textContent='Week '+Math.max(1,Math.floor((d-new Date('2026-03-27'))/(7*864e5))+1);
+}
+
+// ══════════════════════════════════════
+// ── 주간 현황 패널 ──
+// ══════════════════════════════════════
+let _wkAll=[], _wkCharts=[null,null,null,null], _wkInsightText='';
+const WK_BASE=new Date('2026-03-27');
+const GRP_COLORS=['#1D9E75','#7F77DD','#BA7517','#D85A30','#185FA5','#6B8E23','#C04078','#2196F3','#FF9800'];
+
+function wkLabel(docId){
+  const y=docId.slice(0,4),m=docId.slice(4,6),d=docId.slice(6,8);
+  const dt=new Date(`${y}-${m}-${d}`);
+  const wk=Math.max(1,Math.floor((dt-WK_BASE)/(7*864e5))+1);
+  return `${y}.${m}.${d} (${wk}주차)`;
+}
+function wkWeekNum(docId){
+  const y=docId.slice(0,4),m=docId.slice(4,6),d=docId.slice(6,8);
+  return Math.max(1,Math.floor((new Date(`${y}-${m}-${d}`)-WK_BASE)/(7*864e5))+1);
+}
+
+function wkStats(snap){
+  if(!snap||!snap.tasks) return {total:0,prog:0,notyet:0,done:0,avg:0};
+  const tasks=snap.tasks;
+  const total=tasks.length;
+  let prog=0,notyet=0,done=0,sumP=0;
+  tasks.forEach(t=>{
+    const s=(t.status||'').trim();
+    const p=Number(t.progress)||0;
+    sumP+=p;
+    if(s==='완료'||p>=100) done++;
+    else if(s==='미시작'||p===0) notyet++;
+    else prog++;
+  });
+  return {total,prog,notyet,done,avg:total?Math.round(sumP/total):0};
+}
+
+function wkDelta(el,val,suffix,invert){
+  if(val===0){el.textContent='-';el.className='kc-delta wk-zero';return;}
+  const pos=val>0;
+  const good=invert?!pos:pos;
+  el.textContent=(pos?'+':'')+val+suffix;
+  el.className='kc-delta '+(good?'wk-up':'wk-down');
+}
+
+function renderKPI(tw,lw){
+  const a=wkStats(tw),b=wkStats(lw);
+  document.getElementById('wk-total').textContent=a.total+'건';
+  document.getElementById('wk-prog').textContent=a.prog+'건';
+  document.getElementById('wk-notyet').textContent=a.notyet+'건';
+  document.getElementById('wk-avg').textContent=a.avg+'%';
+  wkDelta(document.getElementById('wk-d-total'),a.total-b.total,'건',false);
+  wkDelta(document.getElementById('wk-d-prog'),a.prog-b.prog,'건',false);
+  wkDelta(document.getElementById('wk-d-notyet'),a.notyet-b.notyet,'건',true);
+  wkDelta(document.getElementById('wk-d-avg'),a.avg-b.avg,'%p',false);
+}
+
+function renderCharts(snaps){
+  if(typeof Chart==='undefined') return;
+  const sorted=[...snaps].sort((a,b)=>a.id.localeCompare(b.id));
+  const labels=sorted.map(s=>{const w=wkWeekNum(s.id);return w+'주차';});
+
+  // 차트1: 상태 누적 막대
+  const notyet=[],prog=[],done=[];
+  sorted.forEach(s=>{const st=wkStats(s);notyet.push(st.notyet);prog.push(st.prog);done.push(st.done);});
+  _wkCharts[0]&&_wkCharts[0].destroy();
+  _wkCharts[0]=new Chart(document.getElementById('wk-chart-status'),{type:'bar',data:{labels,datasets:[
+    {label:'미시작',data:notyet,backgroundColor:'#dddbd5',stack:'s'},
+    {label:'진행중',data:prog,backgroundColor:'#7F77DD',stack:'s'},
+    {label:'완료',data:done,backgroundColor:'#1D9E75',stack:'s'}
+  ]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+
+  // 차트2: 평균 진행률 꺾은선
+  const avgs=sorted.map(s=>wkStats(s).avg);
+  _wkCharts[1]&&_wkCharts[1].destroy();
+  _wkCharts[1]=new Chart(document.getElementById('wk-chart-avg'),{type:'line',data:{labels,datasets:[
+    {label:'평균 진행률(%)',data:avgs,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',fill:true,tension:0.3,pointRadius:4}
+  ]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+
+  // 그룹 목록 수집
+  const groupSet=new Set();
+  sorted.forEach(s=>(s.groupSummary||[]).forEach(g=>groupSet.add(g.group)));
+  const groups=[...groupSet];
+
+  // 차트3: LLM 진행률
+  const llmDS=groups.map((g,i)=>({label:g,data:sorted.map(s=>{const f=(s.groupSummary||[]).find(x=>x.group===g);return f?Number(f.llmProgress)||0:null;}),borderColor:GRP_COLORS[i%GRP_COLORS.length],tension:0.3,pointRadius:3,fill:false}));
+  _wkCharts[2]&&_wkCharts[2].destroy();
+  _wkCharts[2]=new Chart(document.getElementById('wk-chart-llm'),{type:'line',data:{labels,datasets:llmDS},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+
+  // 차트4: Agent 진행률
+  const agtDS=groups.map((g,i)=>({label:g,data:sorted.map(s=>{const f=(s.groupSummary||[]).find(x=>x.group===g);return f?Number(f.agentProgress)||0:null;}),borderColor:GRP_COLORS[i%GRP_COLORS.length],tension:0.3,pointRadius:3,fill:false,borderDash:[5,3]}));
+  _wkCharts[3]&&_wkCharts[3].destroy();
+  _wkCharts[3]=new Chart(document.getElementById('wk-chart-agent'),{type:'line',data:{labels,datasets:agtDS},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+}
+
+function generateInsight(tw,lw,allSnaps){
+  const body=document.getElementById('wk-insight-body');
+  if(!tw||!tw.tasks){body.innerHTML='<div class="wk-empty">스냅샷 데이터가 없습니다.</div>';_wkInsightText='';return;}
+
+  const twTasks=tw.tasks||[];
+  const lwTasks=lw?lw.tasks||[]:[];
+  const twKey=t=>t.name+'||'+t.taskName;
+  const lwMap=new Map();lwTasks.forEach(t=>lwMap.set(twKey(t),t));
+
+  // 1. 착수 전환 (미시작→진행중)
+  const started=[];
+  twTasks.forEach(t=>{
+    const old=lwMap.get(twKey(t));
+    if(old){
+      const oldS=(old.status||'').trim(), newS=(t.status||'').trim();
+      const oldP=Number(old.progress)||0, newP=Number(t.progress)||0;
+      if((oldS==='미시작'||oldP===0)&&(newS!=='미시작'&&newP>0)) started.push(t);
+    }
+  });
+
+  // 2. 진행률 상승 TOP5
+  const ups=[];
+  twTasks.forEach(t=>{
+    const old=lwMap.get(twKey(t));
+    if(old){
+      const diff=(Number(t.progress)||0)-(Number(old.progress)||0);
+      if(diff>0) ups.push({name:t.name,task:t.taskName,from:Number(old.progress)||0,to:Number(t.progress)||0,diff});
+    }
+  });
+  ups.sort((a,b)=>b.diff-a.diff);
+  const top5=ups.slice(0,5);
+
+  // 3. 3주 이상 연속 0%
+  const sorted=[...allSnaps].sort((a,b)=>a.id.localeCompare(b.id));
+  const stuck=[];
+  if(sorted.length>=3){
+    const recent3=sorted.slice(-3);
+    const allKeys=new Set();
+    recent3.forEach(s=>(s.tasks||[]).forEach(t=>allKeys.add(twKey(t))));
+    allKeys.forEach(key=>{
+      const zeroAll=recent3.every(s=>{
+        const found=(s.tasks||[]).find(t=>twKey(t)===key);
+        return found&&(Number(found.progress)||0)===0;
+      });
+      if(zeroAll){
+        const t=twTasks.find(x=>twKey(x)===key);
+        if(t) stuck.push(t);
+      }
+    });
+  }
+
+  // 4. 신규 과제
+  const twKeySet=new Set(twTasks.map(twKey));
+  const lwKeySet=new Set(lwTasks.map(twKey));
+  const newTasks=twTasks.filter(t=>!lwKeySet.has(twKey(t)));
+
+  // 날짜/주차
+  const twLabel=wkLabel(tw.id);
+  const weekNum=wkWeekNum(tw.id);
+
+  // DOM 렌더
+  let html='';
+  html+=`<div class="wi-sec"><h4>✅ 이번 주 착수 전환 (${started.length}건)</h4><ul>`;
+  if(started.length) started.forEach(t=>{html+=`<li>${t.name} — ${t.taskName} (미시작→진행중)</li>`;});
+  else html+='<li style="color:var(--tx3)">해당 없음</li>';
+  html+='</ul></div>';
+
+  html+=`<div class="wi-sec"><h4>📈 진행률 상승 TOP 5</h4><ul>`;
+  if(top5.length) top5.forEach(t=>{html+=`<li>${t.name} — ${t.task} ${t.from}% → ${t.to}% (+${t.diff}%p)</li>`;});
+  else html+='<li style="color:var(--tx3)">해당 없음</li>';
+  html+='</ul></div>';
+
+  html+=`<div class="wi-sec"><h4>⚠️ 3주 이상 0% 과제 (${stuck.length}건)</h4><ul>`;
+  if(stuck.length) stuck.forEach(t=>{html+=`<li>${t.name} — ${t.taskName} (${t.group||''})</li>`;});
+  else html+='<li style="color:var(--tx3)">해당 없음</li>';
+  html+='</ul></div>';
+
+  html+=`<div class="wi-sec"><h4>🆕 신규 과제 (${newTasks.length}건)</h4><ul>`;
+  if(newTasks.length) newTasks.forEach(t=>{html+=`<li>${t.name} — ${t.taskName}</li>`;});
+  else html+='<li style="color:var(--tx3)">해당 없음</li>';
+  html+='</ul></div>';
+
+  body.innerHTML=html;
+
+  // 복사용 텍스트 생성
+  const d=new Date();
+  const dateStr=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  let txt='─────────────────────────────\n';
+  txt+=`📊 AX Champion 주간 현황 | ${dateStr} (${weekNum}주차)\n`;
+  txt+='─────────────────────────────\n\n';
+  txt+=`✅ 이번 주 착수 전환 (${started.length}건)\n`;
+  if(started.length) started.forEach(t=>{txt+=`· ${t.name} — ${t.taskName} (미시작→진행중)\n`;});
+  else txt+='· 해당 없음\n';
+  txt+=`\n📈 진행률 상승 TOP 5\n`;
+  if(top5.length) top5.forEach(t=>{txt+=`· ${t.name} — ${t.task} ${t.from}% → ${t.to}% (+${t.diff}%p)\n`;});
+  else txt+='· 해당 없음\n';
+  txt+=`\n⚠️ 3주 이상 0% 과제 (${stuck.length}건)\n`;
+  if(stuck.length) stuck.forEach(t=>{txt+=`· ${t.name} — ${t.taskName} (${t.group||''})\n`;});
+  else txt+='· 해당 없음\n';
+  txt+=`\n🆕 신규 과제 (${newTasks.length}건)\n`;
+  if(newTasks.length) newTasks.forEach(t=>{txt+=`· ${t.name} — ${t.taskName}\n`;});
+  else txt+='· 해당 없음\n';
+  txt+='─────────────────────────────';
+  _wkInsightText=txt;
+}
+
+async function loadSnapshots(){
+  try{
+    const ref=collection(db,'weekly_snapshots');
+    const q=query(ref,orderBy('createdAt','desc'));
+    const snap=await getDocs(q);
+    _wkAll=[];
+    snap.forEach(d=>{_wkAll.push({id:d.id,...d.data()});});
+
+    const selThis=document.getElementById('wk-sel-this');
+    const selLast=document.getElementById('wk-sel-last');
+    selThis.innerHTML='';selLast.innerHTML='';
+
+    if(_wkAll.length===0){
+      selThis.innerHTML='<option>데이터 없음</option>';
+      selLast.innerHTML='<option>데이터 없음</option>';
+      document.getElementById('wk-insight-body').innerHTML='<div class="wk-empty">아직 주간 스냅샷 데이터가 없습니다.<br>Firestore의 <b>weekly_snapshots</b> 컬렉션에 데이터를 추가하면 자동으로 표시됩니다.</div>';
+      return;
+    }
+
+    _wkAll.forEach((s,i)=>{
+      const lbl=wkLabel(s.id);
+      selThis.innerHTML+=`<option value="${i}">${lbl}</option>`;
+      selLast.innerHTML+=`<option value="${i}">${lbl}</option>`;
+    });
+    selThis.value='0';
+    selLast.value=_wkAll.length>1?'1':'0';
+
+    renderWeekly();
+    updateTimestamp();
+  }catch(e){
+    console.error('주간 스냅샷 로드 실패:',e);
+    document.getElementById('wk-insight-body').innerHTML='<div class="wk-empty">스냅샷 데이터 로드에 실패했습니다.</div>';
+  }
+}
+
+function renderWeekly(){
+  const ti=Number(document.getElementById('wk-sel-this').value);
+  const li=Number(document.getElementById('wk-sel-last').value);
+  const tw=_wkAll[ti],lw=_wkAll[li];
+  if(!tw) return;
+  renderKPI(tw,lw);
+  renderCharts(_wkAll);
+  generateInsight(tw,lw,_wkAll);
+}
+
+function updateTimestamp(){
+  const d=new Date();
+  const dn=['일','월','화','수','목','금','토'];
+  document.getElementById('wk-timestamp').textContent=
+    `마지막 업데이트: ${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${dn[d.getDay()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+window._wkCompare=renderWeekly;
+window._wkCopy=function(){
+  if(!_wkInsightText){alert('복사할 인사이트가 없습니다.');return;}
+  navigator.clipboard.writeText(_wkInsightText).then(()=>{
+    const btn=document.querySelector('.wk-copy-btn');
+    const orig=btn.textContent;
+    btn.textContent='✅ 복사 완료!';
+    setTimeout(()=>{btn.textContent=orig;},2000);
+  }).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=_wkInsightText;document.body.appendChild(ta);
+    ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    const btn=document.querySelector('.wk-copy-btn');
+    btn.textContent='✅ 복사 완료!';
+    setTimeout(()=>{btn.textContent='📋 인사이트 복사';},2000);
+  });
+};
+
+// 매주 목요일 13:00 자동 갱신
+let _wkLastRefresh='';
+function setupAutoRefresh(){
+  setInterval(()=>{
+    const d=new Date();
+    const key=d.getFullYear()+''+d.getMonth()+''+d.getDate()+''+d.getHours();
+    if(d.getDay()===4&&d.getHours()===13&&_wkLastRefresh!==key){
+      _wkLastRefresh=key;
+      loadSnapshots();
+    }
+  },60000);
 }
 
 // ── 부트 ──
 initToday();renderTask();buildMilestone();renderNotices();renderEdu();renderMeetings();buildOverviewGroups();
+loadSnapshots();setupAutoRefresh();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 function downloadExcel(){

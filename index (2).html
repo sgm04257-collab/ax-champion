@@ -261,7 +261,7 @@ textarea:focus{outline:none;border-color:var(--ax)}
 </div>
 <div id="view-announce" class="view">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:7px;border-bottom:0.5px solid var(--bd)">
-    <div class="sec-title" style="margin:0;padding:0;border:none">2025 연중 마일스톤</div>
+    <div class="sec-title" style="margin:0;padding:0;border:none">2026 연중 마일스톤</div>
     <button id="ms-edit-btn" onclick="openMsModal()" style="display:none;font-size:11px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg);color:var(--tx2);cursor:pointer">✏️ 마일스톤 편집</button>
   </div>
   <div class="ms-wrap"><div class="ms-grid" id="ms-grid"></div></div>
@@ -431,7 +431,7 @@ const rawChampions=[
 window._champions  = rawChampions.map(c=>({...c,task:'',status:'미시작',progress:0,memo:''}));
 window._groupTasks = {};
 groups.forEach(g=>{window._groupTasks[g.name]={llm:'',rag:''};});
-window._notices = [{id:1,title:'AX Champion 프로그램 킥오프',badge:'공지',color:'ax',date:'2025-03-27',body:'2025년 AX Champion 프로그램이 공식 시작됩니다.\n매주 목요일 14:00~14:30 정기 미팅을 통해 그룹별 과제를 공유합니다.'}];
+window._notices = [{id:1,title:'AX Champion 프로그램 킥오프',badge:'공지',color:'ax',date:'2026-03-27',body:'2026년 AX Champion 프로그램이 공식 시작됩니다.\n매주 목요일 14:00~14:30 정기 미팅을 통해 그룹별 과제를 공유합니다.'}];
 window._eduRows = [
   {id:1,color:'am',badge:'사전학습',name:'기초 역량 강화 (VOD)',schedule:'~ 3/17(화) 이전',target:'지원실 전 임직원 (Champion 중심)',method:'교육 녹화본',hours:'3h × 3일',required:'Champion 필수'},
   {id:2,color:'ax',badge:'3월',name:'Copilot & Agent 개념',schedule:'3/18(수)',target:'지원실 전 임직원',method:'MS 강사',hours:'5시간',required:'전체 필수'},
@@ -462,7 +462,7 @@ function getRankIdx(r){const i=rankOrder.indexOf(r);return i>-1?i:99;}
 function initToday(){
   const d=new Date(),dn=['일','월','화','수','목','금','토'];
   document.getElementById('today-badge').textContent=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} (${dn[d.getDay()]})`;
-  const w=Math.max(1,Math.floor((d-new Date('2025-03-27'))/(7*864e5))+1);
+  const w=Math.max(1,Math.floor((d-new Date('2026-03-27'))/(7*864e5))+1);
   document.getElementById('week-badge').textContent='Week '+w;
 }
 
