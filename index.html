@@ -1294,11 +1294,11 @@ function renderJointTasks(gi){
         <div class="gtask-field" style="grid-column:1/-1">
           <label>진행률</label>
           <div class="pct-row">
-            <input type="range" min="0" max="100" value="${t.progress||0}" oninput="this.nextElementSibling.textContent=this.value+'%';_G[${gi}].jointTasks[${ti}].progress=+this.value;updateProg();push()">
+            <input type="range" min="0" max="100" value="${t.progress||0}" oninput="const v=+this.value;this.nextElementSibling.textContent=v+'%';_G[${gi}].jointTasks[${ti}].progress=v;const st=v===0?'미시작':v>=100?'완료':'진행중';_G[${gi}].jointTasks[${ti}].status=st;const sb=document.getElementById('jt-st-${gi}-${ti}');if(sb){sb.textContent=st;sb.className='wk-status-badge '+(v===0?'wk-st-not':v>=100?'wk-st-done':'wk-st-prog');}updateProg();push()">
             <span class="pct-val">${t.progress||0}%</span>
           </div>
         </div>
-        <div class="gtask-field"><label>상태</label><select class="f-sel" onchange="_G[${gi}].jointTasks[${ti}].status=this.value;push()"><option${(t.status||'미시작')==='미시작'?' selected':''}>미시작</option><option${t.status==='진행중'?' selected':''}>진행중</option><option${t.status==='완료'?' selected':''}>완료</option><option${t.status==='보류'?' selected':''}>보류</option></select></div>
+        <div class="gtask-field"><label>상태</label><span id="jt-st-${gi}-${ti}" class="wk-status-badge ${(t.progress||0)===0?'wk-st-not':(t.progress||0)>=100?'wk-st-done':'wk-st-prog'}" style="align-self:flex-start;margin-top:4px">${(t.progress||0)===0?'미시작':(t.progress||0)>=100?'완료':'진행중'}</span></div>
         <div class="gtask-field"><label>달성 내용</label><textarea class="f-ta" style="min-height:44px" placeholder="현재까지 달성한 내용" oninput="_G[${gi}].jointTasks[${ti}].content=this.value;push()">${t.content||''}</textarea></div>
         <div class="gtask-field"><label>향후 계획</label><textarea class="f-ta" style="min-height:44px" placeholder="앞으로의 계획" oninput="_G[${gi}].jointTasks[${ti}].plan=this.value;push()">${t.plan||''}</textarea></div>
         <div class="gtask-field" style="grid-column:1/-1"><label>비고</label><textarea class="f-ta" style="min-height:36px" placeholder="기타 사항" oninput="_G[${gi}].jointTasks[${ti}].note=this.value;push()">${t.note||''}</textarea></div>
@@ -1338,11 +1338,11 @@ function rerenderMemberTasks(gi, mi){
         <div class="gtask-field" style="grid-column:1/-1">
           <label>진행률</label>
           <div class="pct-row">
-            <input type="range" min="0" max="100" value="${t.progress||0}" oninput="this.nextElementSibling.textContent=this.value+'%';_G[${gi}].members[${mi}].tasks[${ti}].progress=+this.value;updateProg();push()">
+            <input type="range" min="0" max="100" value="${t.progress||0}" oninput="const v=+this.value;this.nextElementSibling.textContent=v+'%';_G[${gi}].members[${mi}].tasks[${ti}].progress=v;const st=v===0?'미시작':v>=100?'완료':'진행중';_G[${gi}].members[${mi}].tasks[${ti}].status=st;const sb=document.getElementById('mt-st-${gi}-${mi}-${ti}');if(sb){sb.textContent=st;sb.className='wk-status-badge '+(v===0?'wk-st-not':v>=100?'wk-st-done':'wk-st-prog');}updateProg();push()">
             <span class="pct-val">${t.progress||0}%</span>
           </div>
         </div>
-        <div class="gtask-field"><label>상태</label><select class="f-sel" onchange="_G[${gi}].members[${mi}].tasks[${ti}].status=this.value;push()"><option${(t.status||'미시작')==='미시작'?' selected':''}>미시작</option><option${t.status==='진행중'?' selected':''}>진행중</option><option${t.status==='완료'?' selected':''}>완료</option><option${t.status==='보류'?' selected':''}>보류</option></select></div>
+        <div class="gtask-field"><label>상태</label><span id="mt-st-${gi}-${mi}-${ti}" class="wk-status-badge ${(t.progress||0)===0?'wk-st-not':(t.progress||0)>=100?'wk-st-done':'wk-st-prog'}" style="align-self:flex-start;margin-top:4px">${(t.progress||0)===0?'미시작':(t.progress||0)>=100?'완료':'진행중'}</span></div>
         <div class="gtask-field"><label>달성 내용</label><textarea class="f-ta" style="min-height:44px" placeholder="현재까지 달성한 내용" oninput="_G[${gi}].members[${mi}].tasks[${ti}].content=this.value;push()">${t.content||''}</textarea></div>
         <div class="gtask-field"><label>향후 계획</label><textarea class="f-ta" style="min-height:44px" placeholder="앞으로의 계획" oninput="_G[${gi}].members[${mi}].tasks[${ti}].plan=this.value;push()">${t.plan||''}</textarea></div>
         <div class="gtask-field" style="grid-column:1/-1"><label>비고</label><textarea class="f-ta" style="min-height:36px" placeholder="기타 사항" oninput="_G[${gi}].members[${mi}].tasks[${ti}].note=this.value;push()">${t.note||''}</textarea></div>
