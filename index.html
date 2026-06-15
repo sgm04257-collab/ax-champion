@@ -650,6 +650,7 @@ window._push=function(){
         groups: window._G.map(g=>({name:g.name,tasks:JSON.parse(JSON.stringify(g.tasks)),keyTask_llm:g.keyTask_llm||'',keyTask_rag:g.keyTask_rag||'',joint:g.joint||false,jointTasks:JSON.parse(JSON.stringify(g.jointTasks||[])),members:g.members.map(m=>({name:m.name,dept:m.dept,tasks:JSON.parse(JSON.stringify(m.tasks))}))})),
         notices:  JSON.parse(JSON.stringify(window._notices||[])),
         msRows:   JSON.parse(JSON.stringify(window._msRows||[])),
+        _msVer:   2,
         eduRows:  JSON.parse(JSON.stringify(window._eduRows||[])),
         meetings: JSON.parse(JSON.stringify(window._meetings||[])),
         sid, updatedAt:new Date().toISOString()
@@ -689,7 +690,7 @@ function apply(data){
     }
   });
   if(data.notices)  window._notices  = data.notices;
-  if(data.msRows)   window._msRows   = data.msRows;
+  if(data.msRows && data._msVer >= 2)   window._msRows   = data.msRows;
   if(data.eduRows)  window._eduRows  = data.eduRows;
   if(data.meetings) window._meetings = data.meetings;
   ['renderTask','buildOverviewGroups','buildMilestone','renderNotices','renderEdu','renderMeetings','updateProg','renderLiveWeek'].forEach(fn=>{
@@ -703,7 +704,14 @@ window._fb={db,doc,collection,query,orderBy,getDocs};
 window._fbSetDoc=async function(ref,data){return setDoc(ref,data);};
 
 setSync('connecting');
-onSnapshot(DOC,snap=>{setSync('synced');if(snap.exists())apply(snap.data());},e=>{console.error(e);setSync('error');});
+onSnapshot(DOC,snap=>{
+  setSync('synced');
+  if(snap.exists()){
+    const d=snap.data();
+    apply(d);
+    if(!d._msVer||d._msVer<2){setTimeout(()=>window._push(),2000);}
+  }
+},e=>{console.error(e);setSync('error');});
 </script>
 
 <!-- 메인 스크립트 -->
