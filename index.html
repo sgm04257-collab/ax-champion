@@ -650,7 +650,7 @@ window._push=function(){
         groups: window._G.map(g=>({name:g.name,tasks:JSON.parse(JSON.stringify(g.tasks)),keyTask_llm:g.keyTask_llm||'',keyTask_rag:g.keyTask_rag||'',joint:g.joint||false,jointTasks:JSON.parse(JSON.stringify(g.jointTasks||[])),members:g.members.map(m=>({name:m.name,dept:m.dept,tasks:JSON.parse(JSON.stringify(m.tasks))}))})),
         notices:  JSON.parse(JSON.stringify(window._notices||[])),
         msRows:   JSON.parse(JSON.stringify(window._msRows||[])),
-        _msVer:   2,
+        _msVer:   3,
         eduRows:  JSON.parse(JSON.stringify(window._eduRows||[])),
         meetings: JSON.parse(JSON.stringify(window._meetings||[])),
         sid, updatedAt:new Date().toISOString()
@@ -690,7 +690,7 @@ function apply(data){
     }
   });
   if(data.notices)  window._notices  = data.notices;
-  if(data.msRows && data._msVer >= 2)   window._msRows   = data.msRows;
+  if(data.msRows && data._msVer >= 3)   window._msRows   = data.msRows;
   if(data.eduRows)  window._eduRows  = data.eduRows;
   if(data.meetings) window._meetings = data.meetings;
   ['renderTask','buildOverviewGroups','buildMilestone','renderNotices','renderEdu','renderMeetings','updateProg','renderLiveWeek'].forEach(fn=>{
@@ -709,7 +709,7 @@ onSnapshot(DOC,snap=>{
   if(snap.exists()){
     const d=snap.data();
     apply(d);
-    if(!d._msVer||d._msVer<2){setTimeout(()=>window._push(),2000);}
+    if(!d._msVer||d._msVer<3){setTimeout(()=>window._push(),2000);}
   }
 },e=>{console.error(e);setSync('error');});
 </script>
@@ -791,9 +791,9 @@ window._msRows=[
   {label:'3월 교육',      color:'#1D9E75',bg:'#E1F5EE',items:{2:{text:'Copilot&Agent'}}},
   {label:'4월 교육①②',   color:'#185FA5',bg:'#E6F1FB',items:{3:{text:'M365·Agent실습'}}},
   {label:'Champion 과제', color:'#7F77DD',bg:'#EEEDFE',items:{3:{text:'과제진행'},4:{text:'과제진행'},5:{text:'과제진행'},7:{text:'과제진행'},8:{text:'과제진행'},9:{text:'과제진행'}}},
-  {label:'LLM 활용',      color:'#185FA5',bg:'#E6F1FB',items:{3:{text:'Copilot도입'},6:{text:'Vertical시범'},9:{text:'확산'}}},
-  {label:'AI Agent·RAG',  color:'#7F77DD',bg:'#EEEDFE',items:{5:{text:'AI Agent'},6:{text:'FCM/HCM연계'},8:{text:'ESS적용'},10:{text:'전사확산'}}},
-  {label:'Claude Code',   color:'#185FA5',bg:'#E6F1FB',items:{6:{text:'Claude Code'}}},
+  {label:'LLM 활용',      color:'#185FA5',bg:'#E6F1FB',items:{3:{text:'Copilot도입'}}},
+  {label:'AI Agent·RAG',  color:'#7F77DD',bg:'#EEEDFE',items:{5:{text:'AI Agent'},10:{text:'전사확산'}}},
+  {label:'Claude Code',   color:'#185FA5',bg:'#E6F1FB',items:{6:{text:'Claude Code 교육'}}},
   {label:'성과공유',       color:'#D85A30',bg:'#FAECE7',items:{5:{text:'중간발표'},10:{text:'연말성과공유'}}},
 ];
 
